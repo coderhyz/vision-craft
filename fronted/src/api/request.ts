@@ -1,14 +1,14 @@
-
 import axios, {
     type InternalAxiosRequestConfig,
     type AxiosResponse,
     type AxiosError,
 } from "axios";
-// 网络请求
+
 const http = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api",
-    withCredentials: true,
+    baseURL: "http://localhost:3000/api",
+    timeout: 300000,
 });
+
 // 请求拦截器：自动注入 token
 http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem("token");

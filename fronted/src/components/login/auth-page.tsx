@@ -1,18 +1,24 @@
 import { useState } from "react";
 import { Tabs, Form, Input, Button, message } from "antd";
-// import { login, register } from "../../api/login";
+import { login, register } from "@/api/login";
 import { useNavigate } from "react-router-dom";
 import { Shield, Monitor, GitBranch } from "lucide-react";
-
+type FieldType = {
+    email: string;
+    password: string;
+    confirm?: string;
+};
 export default function AuthPage() {
     // 登录/注册模式
     const [mode, setMode] = useState<"login" | "register">("login");
     const [loading, setLoading] = useState(false);
+    // 登录/注册表单实例
     const [form] = Form.useForm();
     const navigate = useNavigate();
-
-    const handleSubmit = async (values: any) => {
+    // 提交登录/注册请求
+    const handleSubmit = async (values: FieldType) => {
         setLoading(true);
+        // 
         const { email, password } = values;
         try {
             if (mode === "login") {
@@ -21,6 +27,7 @@ export default function AuthPage() {
                     message.success(res.message);
                     localStorage.setItem("token", res.data.token);
                     localStorage.setItem("user", JSON.stringify(res.data.user));
+                    // 存储的userId
                     localStorage.setItem("userId", res.data.user.id);
                     navigate("/projects");
                 } else {
@@ -103,8 +110,9 @@ export default function AuthPage() {
                             ]}
                             className="mb-4"
                         />
-
+                        {/* 登录/注册表单 */}
                         <Form
+                            // 注册表单
                             form={form}
                             layout="vertical"
                             requiredMark={false}
@@ -114,6 +122,7 @@ export default function AuthPage() {
                             <Form.Item
                                 label={<span className="text-slate-600 text-sm">邮箱</span>}
                                 name="email"
+                                // 校验规则
                                 rules={[
                                     { required: true, message: "邮箱不能为空" },
                                     { type: "email", message: "请输入有效邮箱" },
@@ -125,7 +134,11 @@ export default function AuthPage() {
                             <Form.Item
                                 label={<span className="text-slate-600 text-sm">密码</span>}
                                 name="password"
-                                rules={[{ required: true, message: "密码不能为空" }]}
+                                // 校验规则
+                                rules={[
+                                    { required: true, message: "密码不能为空" },
+                                    { min: 6, message: "密码长度至少为6位" },
+                                ]}
                             >
                                 <Input.Password size="large" placeholder="请输入密码" />
                             </Form.Item>

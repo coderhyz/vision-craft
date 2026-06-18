@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { Zap, Layers, Eye } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 export default function Home() {
+    // 缓存一下，防止每次渲染都重新创建对象，导致子组件重复渲染
     const highlights = useMemo(
         () => [
             {
@@ -25,7 +26,8 @@ export default function Home() {
         ],
         [],
     );
-
+    // 缓存token，防止每次渲染都重新获取，导致子组件重复渲染
+    const token = useMemo(() => localStorage.getItem("token"), []);
     return (
         <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50 text-slate-800">
             {/* 顶部淡雅装饰 */}
@@ -46,9 +48,15 @@ export default function Home() {
                         </div>
                     </div>
                 </div>
-                <NavLink to="/auth" className="vc-btn-ghost text-sm">
-                    登录 / 注册
-                </NavLink>
+                {token ? (
+                    <NavLink to="/projects" className="vc-btn-ghost text-sm">
+                        项目管理
+                    </NavLink>
+                ) : (
+                    <NavLink to="/auth" className="vc-btn-ghost text-sm">
+                        登录 / 注册
+                    </NavLink>
+                )}
             </header>
 
             {/* Hero */}
@@ -68,9 +76,16 @@ export default function Home() {
                         为产品、运营、数据团队打造的可视化搭建平台。拖拽组件、连接数据源、实时预览与发布，帮助你快速交付高品质数据大屏与业务看板。
                     </p>
                     <div className="flex flex-wrap gap-3">
-                        <a href="/auth" className="vc-btn">
-                            开始体验
-                        </a>
+                        {/* 检查是否有token */}
+                        {token ? (
+                            <Link to="/projects" className="vc-btn">
+                                开始体验
+                            </Link>
+                        ) : (
+                            <Link to="/auth" className="vc-btn">
+                                开始体验
+                            </Link>
+                        )}
                     </div>
                     <div className="flex flex-wrap gap-5 text-sm text-slate-400">
                         {["丰富物料", "图表主题", "实时预览", "团队协作"].map(
