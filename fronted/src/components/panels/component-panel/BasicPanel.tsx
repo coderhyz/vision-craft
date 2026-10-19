@@ -7,7 +7,7 @@ interface BaseComponentItem {
     name: string; // 组件名称
     icon: React.ReactNode; // 组件图标
 }
-// 基础组件
+// 基础组件菜单项
 function PanelItem({ type, name, icon }: BaseComponentItem) {
     return (
         // 可拖拽的子项 传递的都是组件的类型、名称、图标
@@ -28,7 +28,7 @@ function PanelItem({ type, name, icon }: BaseComponentItem) {
         </DraggableItem>
     );
 }
-
+// 菜单项就在这里面加
 export default function BasicPanel() {
     const component: BaseComponentItem[] = [
         { type: "Text", name: "文字组件", icon: <AlignJustify className="h-5 w-5" /> },

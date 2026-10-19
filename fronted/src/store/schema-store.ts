@@ -105,6 +105,7 @@ export const useSchemaStore = create<SchemaState>()(
                     state.schema.name = patch.name;
                 }
                 if (patch.props) {
+                    // 直接原地合并props即可
                     Object.assign(state.schema.props, patch.props);
                 }
                 if (patch.settings) {
@@ -116,6 +117,7 @@ export const useSchemaStore = create<SchemaState>()(
                                 ? normalizeGridSize(patch.settings.gridSize)
                                 : state.schema.settings.gridSize,
                     };
+                    // 然后继续原地合并 settings，保持引用不变
                     Object.assign(state.schema.settings, nextSettings);
                 }
             });

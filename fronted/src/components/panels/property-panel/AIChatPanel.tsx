@@ -7,7 +7,18 @@ import { useAIGenerate } from "@/hooks/useAIGenerate";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useSchemaStore } from "@/store/schema-store";
 import { useComponentEditStore } from "@/store/component-edit-store";
-import { RotateCcw, Info, Sparkles, BookOpen, FileText } from "lucide-react";
+import {
+    RotateCcw,
+    Info,
+    Sparkles,
+    BookOpen,
+    FileText,
+    BrainCircuit,
+    Wrench,
+    CheckCircle2,
+    LoaderCircle,
+    CircleX,
+} from "lucide-react";
 import type { ChatMessage } from "@/types/chat";
 
 type ChatMode = "create" | "ask";
@@ -28,17 +39,21 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
     const schema = useSchemaStore((state) => state.schema);
     const generate = useAIGenerate();
     const chat = useAIChat();
+    // 精准修改模式下的 pendingEdit
     const { pendingEdit, clearPendingEdit } = useComponentEditStore();
-
+    // 当前模式：create（创建大屏） | ask（知识问答）
     const [mode, setMode] = useState<ChatMode>("create");
-    const [inputValue, setInputValue] = useState("");
+    const [inputValue, setInputValue] = useState(
+        () => schema?.props?.title ?? "",
+    );
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // 当前模式对应的状态
     const isCreate = mode === "create";
+    // ai的消息
     const messages = isCreate ? generate.messages : chat.messages;
+    // ai的loading状态
     const loading = isCreate ? generate.loading : chat.loading;
-    const sessionId = isCreate ? generate.sessionId : chat.sessionId;
 
     // 滚动到底部
     useEffect(() => {
@@ -54,20 +69,21 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
         setTimeout(() => {
             generate.submit(currentEdit.prompt, { targetComponent: currentEdit.node });
         }, 0);
-    }, [pendingEdit, generate.loading, isCreate]);
+    }, [pendingEdit, generate.loading, isCreate, generate, clearPendingEdit]);
 
     // pendingEdit 触发时自动切换到 create 模式
     useEffect(() => {
         if (pendingEdit && mode !== "create") {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setMode("create");
         }
-    }, [pendingEdit]);
-
+    }, [pendingEdit, mode]);
+    // 取消请求
     const handleCancel = () => {
         if (isCreate) generate.cancel();
         else chat.cancel();
     };
-
+    // 重置对话
     const handleReset = () => {
         const resetFn = isCreate ? generate.reset : chat.reset;
         Modal.confirm({
@@ -79,7 +95,7 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
             onOk: () => resetFn(),
         });
     };
-
+    // 提交请求
     const handleSubmit = () => {
         const prompt = inputValue.trim();
         if (!prompt) return;
@@ -89,22 +105,25 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
     };
 
     // 卸载时兜底关闭连接
-    useEffect(() => () => {
-        generate.closeSSE();
-        chat.closeSSE();
-    }, []);
+    useEffect(
+        () => () => {
+            generate.closeSSE();
+            chat.closeSSE();
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        []
+    );
 
     // 首次打开 create 模式时预填页面标题
-    useEffect(() => {
-        if (schema?.props?.title && generate.messages.length === 0 && isCreate) {
-            setInputValue(schema.props.title);
-        }
-    }, []);
 
     const examples = isCreate ? CREATE_EXAMPLES : ASK_EXAMPLES;
     const placeholder = isCreate
-        ? (messages.length === 0 ? "例如：智慧园区运营大屏，包含客流、能耗..." : "继续描述需求，例如：再加一个折线图...")
-        : (messages.length === 0 ? "例如：饼图的 fieldMapping 怎么配置？" : "继续提问...");
+        ? messages.length === 0
+            ? "例如：智慧园区运营大屏，包含客流、能耗..."
+            : "继续描述需求，例如：再加一个折线图..."
+        : messages.length === 0
+            ? "例如：饼图的 fieldMapping 怎么配置？"
+            : "继续提问...";
 
     // 渲染单条消息内容
     const renderMessageContent = (msg: ChatMessage) => {
@@ -113,6 +132,7 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
             return (
                 <div>
                     <div className="prose prose-sm prose-slate max-w-none">
+                        {/* 渲染 */}
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                     </div>
                     {msg.sources && msg.sources.length > 0 && (
@@ -120,14 +140,90 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
                             <p className="mb-1 text-[11px] font-medium text-slate-400">参考来源</p>
                             <div className="flex flex-col gap-1">
                                 {msg.sources.map((src, i) => (
-                                    <div key={i} className="flex items-start gap-1.5 rounded border border-slate-100 bg-slate-50/50 px-2 py-1 text-[11px] text-slate-500">
+                                    <div
+                                        key={i}
+                                        className="flex items-start gap-1.5 rounded border border-slate-100 bg-slate-50/50 px-2 py-1 text-[11px] text-slate-500"
+                                    >
                                         <FileText className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" />
                                         <div>
-                                            <span className="font-medium text-slate-600">{src.title}</span>
-                                            {src.snippet && <p className="mt-0.5 leading-relaxed text-slate-400">{src.snippet}</p>}
+                                            <span className="font-medium text-slate-600">
+                                                {src.title}
+                                            </span>
+                                            {src.snippet && (
+                                                <p className="mt-0.5 leading-relaxed text-slate-400">
+                                                    {src.snippet}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // create 模式展示经过整理的决策摘要与工具调用，不暴露模型原始推理文本。
+        if (isCreate && msg.role === "ai") {
+            return (
+                <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                        {msg.loading && (
+                            <LoaderCircle className="h-3.5 w-3.5 shrink-0 animate-spin text-brand-500" />
+                        )}
+                        <span>{msg.content}</span>
+                    </div>
+                    {msg.agentSteps && msg.agentSteps.length > 0 && (
+                        <div className="mt-2 border-t border-slate-200 pt-2">
+                            <p className="mb-1.5 text-[11px] font-medium text-slate-400">
+                                执行过程 · {msg.agentSteps.length} 步
+                            </p>
+                            <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
+                                {msg.agentSteps.map((step) => {
+                                    const StepIcon =
+                                        step.status === "error"
+                                            ? CircleX
+                                            : step.status === "done"
+                                                ? CheckCircle2
+                                                : step.kind === "tool"
+                                                    ? Wrench
+                                                    : BrainCircuit;
+                                    return (
+                                        <div
+                                            key={step.id}
+                                            className="flex items-start gap-1.5 rounded-md bg-white/70 px-2 py-1.5 text-[11px]"
+                                        >
+                                            <StepIcon
+                                                className={`mt-0.5 h-3 w-3 shrink-0 ${step.status === "error"
+                                                    ? "text-red-400"
+                                                    : step.status === "done"
+                                                        ? "text-emerald-500"
+                                                        : "text-brand-500 animate-pulse"
+                                                    }`}
+                                            />
+                                            <div className="min-w-0">
+                                                <div className="font-medium text-slate-600">
+                                                    {step.title}
+                                                </div>
+                                                {step.detail && step.kind === "reasoning" ? (
+                                                    <details className="mt-0.5">
+                                                        <summary className="cursor-pointer select-none text-brand-500 hover:text-brand-600">
+                                                            展开思考内容
+                                                        </summary>
+                                                        <div className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded bg-slate-50 p-1.5 leading-relaxed text-slate-400">
+                                                            {step.detail}
+                                                        </div>
+                                                    </details>
+                                                ) : step.detail ? (
+                                                    <div className="break-words text-slate-400">
+                                                        {step.detail}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -138,7 +234,10 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
     };
 
     return (
-        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden" style={{ display: visible ? "flex" : "none" }}>
+        <div
+            className="flex min-h-0 w-full flex-1 flex-col overflow-hidden"
+            style={{ display: visible ? "flex" : "none" }}
+        >
             {/* 顶部栏：模式切换 + 会话状态 + 重置 */}
             <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-3 py-1.5">
                 <div className="flex items-center gap-1">
@@ -154,7 +253,7 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
                         <Sparkles className="h-3 w-3" />
                         创建大屏
                     </button>
-                    <button
+                    {/* <button
                         className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${!isCreate
                             ? "bg-brand-50 text-brand-600 font-medium"
                             : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
@@ -164,7 +263,7 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
                     >
                         <BookOpen className="h-3 w-3" />
                         知识问答
-                    </button>
+                    </button> */}
                     {/* 会话状态 */}
                     {loading && (
                         <span className="ml-1 inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs text-emerald-600">
@@ -191,20 +290,20 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
                         <p className="text-sm text-slate-500">
                             {isCreate
                                 ? "描述你想要的大屏需求，AI 将直接产出可编辑的 Schema。多轮对话可在现有画布基础上追加或修改。"
-                                : "向 AI 助手提问关于组件配置、数据源设置、图表映射等问题，将基于平台知识库为你解答。"
-                            }
+                                : "向 AI 助手提问关于组件配置、数据源设置、图表映射等问题，将基于平台知识库为你解答。"}
                         </p>
                         <div className="flex items-start gap-2 rounded-lg border border-brand-100 bg-brand-50/50 px-3 py-2 text-xs text-brand-600">
                             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                             <span>
                                 {isCreate
                                     ? "生成结果会追加到当前画布，不会自动保存。"
-                                    : "回答基于平台知识库，涵盖组件文档、配置规范和使用指南。"
-                                }
+                                    : "回答基于平台知识库，涵盖组件文档、配置规范和使用指南。"}
                             </span>
                         </div>
                         <div className="space-y-1.5">
-                            <p className="text-xs text-slate-400">{isCreate ? "示例提示词（点击填充）" : "示例问题（点击填充）"}</p>
+                            <p className="text-xs text-slate-400">
+                                {isCreate ? "示例提示词（点击填充）" : "示例问题（点击填充）"}
+                            </p>
                             <div className="flex flex-col gap-1.5">
                                 {examples.map((item) => (
                                     <div
@@ -224,7 +323,7 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
                             <Bubble
                                 key={msg.id}
                                 placement={msg.role === "user" ? "end" : "start"}
-                                loading={msg.loading}
+                                loading={msg.loading && !(isCreate && msg.role === "ai")}
                                 content={renderMessageContent(msg)}
                                 styles={{
                                     content: {
@@ -236,7 +335,6 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
                                         padding: "8px 12px",
                                         maxWidth: "100%",
                                         wordBreak: "break-word" as const,
-                                        whiteSpace: "pre-wrap" as const,
                                         borderRadius: "10px",
                                     },
                                 }}
@@ -252,13 +350,19 @@ export default function AIChatPanel({ visible }: { visible: boolean }) {
                 <Sender
                     value={inputValue}
                     onChange={setInputValue}
+                    // 提交
                     onSubmit={handleSubmit}
+                    // 取消请求
                     onCancel={handleCancel}
                     loading={loading}
                     disabled={false}
                     placeholder={placeholder}
                     allowSpeech={false}
-                    styles={{ input: { fontSize: "13px", color: "#1e293b" } }}
+                    styles={
+                        {
+                            input: { fontSize: "13px", color: "#1e293b" }
+                        }
+                    }
                 />
             </div>
         </div>

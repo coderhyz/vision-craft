@@ -17,6 +17,7 @@ export const areaChartDefaultConfig: AreaChartComponent = {
         showLegend: false,
         tooltipEnabled: true,
     },
+    // 多一个 dataSource 字段，方便后续扩展数据源类型
     dataSource: {
         sourceType: "static",
         data: [

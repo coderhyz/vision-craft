@@ -281,6 +281,7 @@ export default function Index() {
                 </DndWrapper>
                 {/* 属性面板 */}
                 <div className="h-full overflow-hidden border-l border-slate-200 bg-white">
+                    {/* 属性面板 */}
                     <PropertyPanel />
                 </div>
             </div>

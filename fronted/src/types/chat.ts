@@ -8,6 +8,16 @@ export interface ChatMessage {
     loading?: boolean;
     /** RAG 问答引用的文档来源（仅 ask 模式） */
     sources?: DocumentSource[];
+    /** Schema Agent 的可观察执行轨迹（仅 create 模式） */
+    agentSteps?: AgentStep[];
+}
+
+export interface AgentStep {
+    id: string;
+    kind: "thinking" | "tool";
+    title: string;
+    detail?: string;
+    status: "running" | "done" | "error";
 }
 
 export interface DocumentSource {

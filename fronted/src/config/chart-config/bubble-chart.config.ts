@@ -26,7 +26,12 @@ export const bubbleChartDefaultConfig: BubbleChartComponent = {
             { x: 22, y: 32, size: 25, category: "区域B" },
             { x: 28, y: 12, size: 18, category: "区域C" },
         ],
-        fieldMapping: { x: "x", y: "y", size: "size", category: "category" },
+        fieldMapping: {
+            x: "x",
+            y: "y",
+            size: "size",
+            category: "category"
+        },
     },
     style: {
         top: 0,

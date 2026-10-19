@@ -20,11 +20,13 @@ interface PageFormRendererProps {
 
 /**
  * 页面配置自建表单渲染器
+ * https://ant.design/components/collapse-cn
  * - 支持 Collapse 分组布局
  * - 与 PropsFormRenderer 共享 FieldRow 渲染逻辑但更简单（页面字段类型有限）
  */
 export default function PageFormRenderer({ values, hints, groups, onChange }: PageFormRendererProps) {
     const collapseItems = groups.map((group) => ({
+        // Collapse.Item 的 key 和 label
         key: group.key,
         label: group.title,
         children: (
@@ -87,9 +89,9 @@ function PageFieldRow({ fieldKey, value, hint, onChange }: PageFieldRowProps) {
         );
     }
 
-    let control: React.ReactNode;
+    let fieldControl: React.ReactNode;
     if (type === "number") {
-        control = (
+        fieldControl = (
             <InputNumber
                 size="small"
                 className="w-full"
@@ -100,7 +102,7 @@ function PageFieldRow({ fieldKey, value, hint, onChange }: PageFieldRowProps) {
             />
         );
     } else if (hint?.widget === "textarea") {
-        control = (
+        fieldControl = (
             <Input.TextArea
                 size="small"
                 rows={2}
@@ -110,7 +112,7 @@ function PageFieldRow({ fieldKey, value, hint, onChange }: PageFieldRowProps) {
             />
         );
     } else {
-        control = (
+        fieldControl = (
             <Input
                 size="small"
                 value={value ?? ""}
@@ -123,27 +125,68 @@ function PageFieldRow({ fieldKey, value, hint, onChange }: PageFieldRowProps) {
     return (
         <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-600">{label}</label>
+            {/* 描述信息 */}
             {description && <span className="text-[10px] text-slate-400">{description}</span>}
-            {control}
+            {/* 表单控件 */}
+            {fieldControl}
         </div>
     );
 }
 
 /** 页面配置 hints */
+// eslint-disable-next-line react-refresh/only-export-components
 export const pageHints: FormHints = {
-    name: { title: "页面名称", placeholder: "如：销售大屏" },
-    title: { title: "展示标题", placeholder: "用于对外展示的标题" },
-    description: { title: "页面描述", widget: "textarea", placeholder: "简要描述页面用途" },
-    width: { title: "宽度", min: 320 },
-    height: { title: "高度", min: 180 },
-    gridSize: { title: "吸附网格", min: 1, description: "可选，编辑态的吸附步进" },
-    backgroundColor: { title: "背景色", widget: "color", placeholder: "例如：#ffffff" },
-    backgroundImage: { title: "背景图 URL", placeholder: "https://example.com/bg.png" },
+    name: {
+        title: "页面名称",
+        placeholder: "如：销售大屏"
+    },
+    title: {
+        title: "展示标题",
+        placeholder: "用于对外展示的标题"
+    },
+    description: {
+        title: "页面描述",
+        widget: "textarea",
+        placeholder: "简要描述页面用途"
+    },
+    width: {
+        title: "宽度",
+        min: 320
+    },
+    height: {
+        title: "高度",
+        min: 180
+    },
+    gridSize: {
+        title:
+            "吸附网格", min: 1,
+        description: "可选，编辑态的吸附步进"
+    },
+    backgroundColor: {
+        title: "背景色",
+        widget: "color", placeholder: "例如：#ffffff"
+    },
+    backgroundImage: {
+        title: "背景图 URL",
+        placeholder: "https://example.com/bg.png"
+    },
 };
 
 /** 页面配置分组 */
 export const pageFieldGroups = [
-    { key: "basic", title: "基础信息", fields: ["name", "title", "description"] },
-    { key: "size", title: "画布尺寸 (px)", fields: ["width", "height", "gridSize"] },
-    { key: "style", title: "背景样式", fields: ["backgroundColor", "backgroundImage"] },
+    {
+        key: "basic",
+        title: "基础信息",
+        fields: ["name", "title", "description"]
+    },
+    {
+        key: "size",
+        title: "画布尺寸 (px)",
+        fields: ["width", "height", "gridSize"]
+    },
+    {
+        key: "style",
+        title: "背景样式",
+        fields: ["backgroundColor", "backgroundImage"]
+    },
 ];

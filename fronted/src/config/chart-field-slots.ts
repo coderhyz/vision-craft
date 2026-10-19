@@ -10,7 +10,7 @@ export interface FieldSlot {
     label: string; // 中文标签（如 "X 轴(类目)"）
     required?: boolean; // 是否必填
 }
-
+// 图表组件的字段槽位配置
 export const chartFieldSlots: Partial<Record<ComponentType, FieldSlot[]>> = {
     BarChart: [
         { key: "x", label: "X 轴(类目)", required: true },

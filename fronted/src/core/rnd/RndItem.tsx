@@ -227,7 +227,7 @@ export default function RndItem({ node, children, scale = 1 }: RndItemProps) {
                         onDeselect={handleDeselect}
                     />
                 )}
-                {/* 看是否选中 */}
+                {/* 看是否选中显示AI编辑输入框 */}
                 {isSelected && (
                     <AiEditInput node={node} isNearTop={isNearTop} />
                 )}

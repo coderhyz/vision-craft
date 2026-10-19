@@ -5,7 +5,8 @@ import type { ChatMessage, DocumentSource } from "@/types/chat";
 export function useAIChat() {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [loading, setLoading] = useState(false);
-    const sessionIdRef = useRef<string | null>(null);
+    // sessionId 会用于渲染会话状态，因此使用 state 保存。
+    const [sessionId, setSessionId] = useState<string | null>(null);
     const sseRef = useRef<EventSource | null>(null);
 
     const closeSSE = () => {
@@ -41,7 +42,7 @@ export function useAIChat() {
         closeSSE();
         setMessages([]);
         setLoading(false);
-        sessionIdRef.current = null;
+        setSessionId(null);
     };
 
     const submit = (question: string) => {
@@ -59,8 +60,8 @@ export function useAIChat() {
             question,
             token: token || "",
         });
-        if (sessionIdRef.current) {
-            params.set("sessionId", sessionIdRef.current);
+        if (sessionId) {
+            params.set("sessionId", sessionId);
         }
 
         const sse = new EventSource(
@@ -73,9 +74,11 @@ export function useAIChat() {
         sse.addEventListener("start", (evt) => {
             try {
                 const data = JSON.parse((evt as MessageEvent).data);
-                if (data?.sessionId) sessionIdRef.current = data.sessionId;
+                if (data?.sessionId) setSessionId(data.sessionId);
                 updateLastAiMessage(() => ({ content: "正在思考中..." }));
-            } catch (_) { }
+            } catch {
+                // 忽略无法解析的 start 事件，后续事件仍可继续处理。
+            }
         });
 
         sse.addEventListener("text_chunk", (evt) => {
@@ -94,7 +97,9 @@ export function useAIChat() {
                 const payload = JSON.parse((evt as MessageEvent).data);
                 const sources: DocumentSource[] = payload?.sources ?? [];
                 updateLastAiMessage(() => ({ sources }));
-            } catch (_) { }
+            } catch {
+                // 忽略无法解析的来源数据，不影响回答正文。
+            }
         });
 
         sse.addEventListener("end", () => {
@@ -117,7 +122,7 @@ export function useAIChat() {
     return {
         messages,
         loading,
-        sessionId: sessionIdRef.current,
+        sessionId,
         submit,
         cancel,
         reset,

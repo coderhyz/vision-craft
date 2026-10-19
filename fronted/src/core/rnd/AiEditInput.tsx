@@ -21,6 +21,7 @@ export default function AiEditInput({ node, isNearTop }: AiEditInputProps) {
     // 提交一下ai的输入
     const handleSubmit = () => {
         if (aiInput.trim()) {
+            // 将输入的内容设置为待修改的内容 和 选中的节点
             setPendingEdit(aiInput.trim(), node);
             setAiInput("");
         }

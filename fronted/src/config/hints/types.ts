@@ -7,14 +7,14 @@ import type { ComponentType } from "@/core/schema/types";
 export interface FormHint {
     title: string;
     enum?: (string | number)[];
-    widget?: "radio" | "select" | "textarea" | "hidden" | "color";
+    widget?: "radio" | "select" | "textarea" | "hidden" | "color"; // 
     min?: number;
     max?: number;
     placeholder?: string;
     description?: string;
     hidden?: boolean;
 }
-
+// 给“自动生成的属性表单”提供额外的 UI 提示信息。
 export type FormHints = Record<string, FormHint>;
 
 /**

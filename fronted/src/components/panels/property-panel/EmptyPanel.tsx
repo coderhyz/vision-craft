@@ -1,5 +1,5 @@
 import { MousePointer2 } from "lucide-react";
-
+//  空属性面板
 export default function EmptyPanel() {
     return (
         <div className="h-full flex items-center justify-center px-4">

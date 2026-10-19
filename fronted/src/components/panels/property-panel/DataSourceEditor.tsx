@@ -7,13 +7,17 @@ import { chartFieldSlots, type FieldSlot } from "@/config/chart-field-slots";
 const { TextArea } = Input;
 const { Text } = Typography;
 
+/** 数据源编辑器组件的属性。 */
 interface DataSourceEditorProps {
+    /** 当前正在编辑的组件类型，用于匹配图表所需的字段槽位。 */
     componentType: ComponentType;
+    /** 当前图表的数据源配置。 */
     dataSource: ChartDataSource;
+    /** 数据源配置发生变化时通知父组件。 */
     onChange: (ds: ChartDataSource) => void;
 }
 
-/** 判断是否为图表组件 */
+/** 支持数据源配置的图表组件类型集合。 */
 const CHART_TYPES = new Set<ComponentType>([
     "BarChart", "MultiBarChart", "LineChart", "PieChart",
     "ScatterChart", "BubbleChart", "AreaChart", "MultiLineChart",
@@ -21,6 +25,12 @@ const CHART_TYPES = new Set<ComponentType>([
     "FunnelChart", "GaugeChart", "TreemapChart",
 ]);
 
+/**
+ * 判断指定组件是否属于图表组件。
+ *
+ * @param type 待判断的组件类型。
+ * @returns 属于图表组件时返回 true，否则返回 false。
+ */
 export function isChartType(type: ComponentType): boolean {
     return CHART_TYPES.has(type);
 }
@@ -31,14 +41,26 @@ export function isChartType(type: ComponentType): boolean {
  * - 静态数据 JSON 编辑
  * - API 配置（url + refreshInterval）
  * - 字段映射下拉选择（根据 chartFieldSlots 自动生成）
+ *
+ * @param componentType 当前组件类型。
+ * @param dataSource 当前数据源配置。
+ * @param onChange 数据源更新回调。
+ * @returns 数据来源与字段映射编辑面板。
  */
 export default function DataSourceEditor({ componentType, dataSource, onChange }: DataSourceEditorProps) {
+    /** 当前图表支持的字段槽位，例如分类字段、数值字段和系列字段。 */
     const slots: FieldSlot[] = chartFieldSlots[componentType] ?? [];
+    /** 当前数据来源类型，未配置时默认使用静态数据。 */
     const sourceType = dataSource.sourceType ?? "static";
+    /** 当前字段槽位与原始数据字段之间的映射关系。 */
     const fieldMapping = dataSource.fieldMapping ?? {};
+    /** 静态 JSON 的输入草稿，允许用户暂时输入尚未完成的 JSON。 */
     const [dataJsonDraft, setDataJsonDraft] = useState("[]");
 
-    // 从静态数据中提取可用的字段名
+    /**
+     * 从第一条静态数据中提取可用于字段映射的字段名。
+     * 数据为空或第一项不是普通对象时返回空数组。
+     */
     const availableFields = useMemo<string[]>(() => {
         const data = dataSource.data;
         if (!Array.isArray(data) || data.length === 0) return [];
@@ -47,6 +69,11 @@ export default function DataSourceEditor({ componentType, dataSource, onChange }
         return Object.keys(first as Record<string, unknown>);
     }, [dataSource.data]);
 
+    /**
+     * 合并局部数据源配置，并将完整配置通知父组件。
+     *
+     * @param patch 本次需要更新的数据源字段。
+     */
     const update = useCallback(
         (patch: Partial<ChartDataSource>) => {
             onChange({ ...dataSource, ...patch });
@@ -54,6 +81,13 @@ export default function DataSourceEditor({ componentType, dataSource, onChange }
         [dataSource, onChange],
     );
 
+    /**
+     * 更新单个字段槽位的映射关系。
+     * 当 value 为空时删除该槽位的映射。
+     *
+     * @param key 图表字段槽位标识。
+     * @param value 静态数据中的目标字段名。
+     */
     const updateMapping = useCallback(
         (key: string, value?: string) => {
             const nextMapping = { ...fieldMapping };
@@ -67,7 +101,7 @@ export default function DataSourceEditor({ componentType, dataSource, onChange }
         [fieldMapping, update],
     );
 
-    // 静态数据的 JSON 字符串（用于 TextArea 显示）
+    /** 将静态数据格式化为供 TextArea 显示的 JSON 字符串。 */
     const dataJson = useMemo(() => {
         try {
             return JSON.stringify(dataSource.data ?? [], null, 2);
@@ -76,10 +110,17 @@ export default function DataSourceEditor({ componentType, dataSource, onChange }
         }
     }, [dataSource.data]);
 
+    /** 外部静态数据发生变化时，同步更新输入框草稿。 */
     useEffect(() => {
         setDataJsonDraft(dataJson);
     }, [dataJson]);
 
+    /**
+     * 处理静态数据输入。
+     * 无论 JSON 是否完整都会保留输入草稿；只有解析成功且结果为数组时才更新数据源。
+     *
+     * @param jsonStr 用户当前输入的 JSON 字符串。
+     */
     const handleDataChange = useCallback(
         (jsonStr: string) => {
             setDataJsonDraft(jsonStr);
@@ -89,12 +130,16 @@ export default function DataSourceEditor({ componentType, dataSource, onChange }
                     update({ data: parsed });
                 }
             } catch {
-                // 用户正在输入无效 JSON 时，保留草稿，不覆盖输入框内容
+                /** 用户正在输入无效 JSON 时，保留草稿，不覆盖输入框内容。 */
             }
         },
         [update],
     );
 
+    /**
+     * Ant Design Collapse 的面板配置。
+     * 数据来源面板始终显示；字段映射面板仅在当前图表声明了字段槽位时显示。
+     */
     const collapseItems = [
         {
             key: "source",

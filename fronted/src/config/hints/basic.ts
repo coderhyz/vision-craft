@@ -1,11 +1,30 @@
 import type { FormHints } from "./types";
-// 表单提示配置
+// 文本组件表单提示设置
 export const textHints: FormHints = {
-    content: { title: "文本内容", widget: "textarea", placeholder: "请输入文本内容" },
-    fontSize: { title: "字体大小", min: 12, max: 72 },
-    fontWeight: { title: "字体粗细", enum: [300, 400, 500, 600, 700] },
-    color: { title: "文字颜色", widget: "color", placeholder: "例如：#000000" },
-    textAlign: { title: "对齐方式", enum: ["左", "居中", "右"], widget: "radio" },
+    content: {
+        title: "文本内容",
+        widget: "textarea",
+        placeholder: "请输入文本内容"
+    },
+    fontSize: {
+        title: "字体大小",
+        min: 12,
+        max: 72
+    },
+    fontWeight: {
+        title: "字体粗细",
+        enum: [300, 400, 500, 600, 700]
+    },
+    color: {
+        title: "文字颜色",
+        widget: "color",
+        placeholder: "例如：#000000"
+    },
+    textAlign: {
+        title: "对齐方式",
+        enum: ["左", "居中", "右"],
+        widget: "radio"
+    },
 };
 
 export const imageHints: FormHints = {
