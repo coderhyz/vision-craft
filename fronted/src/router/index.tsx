@@ -67,7 +67,7 @@ const AuthGuard = () => {
     // 这里直接从 localStorage 读取 token
     const hasToken = Boolean(localStorage.getItem("token"));
     const warnedRef = useRef(false);
-    console.log("AuthGuard: hasToken =", hasToken, "location =", location);
+    // console.log("AuthGuard: hasToken =", hasToken, "location =", location);
     useEffect(() => {
         if (!hasToken && !warnedRef.current) {
             warnedRef.current = true;

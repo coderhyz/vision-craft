@@ -282,7 +282,7 @@ export function useAIGenerate() {
                 detail: "检测到相同请求，已跳过重复的模型调用。",
             });
         });
-
+        // 监听到后端返回的组件节点数据，进行 upsert（更新或新增）操作
         sse.addEventListener("ai_chunk", (evt) => {
             try {
                 // 监听到后端返回的组件节点数据，进行 upsert（更新或新增）操作

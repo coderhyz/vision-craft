@@ -65,7 +65,7 @@ export default function Index() {
             try {
                 // 获取单个id页面的数据
                 const resp = await getPageById(id);
-                console.log("getPageById resp", resp);
+                // console.log("getPageById resp", resp);
                 // 解析页面大屏的响应数据
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const { code, message, data } = (resp as any) || {};
