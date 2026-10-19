@@ -44,7 +44,7 @@ jobs:
         working-directory: ./fronted
         run: pnpm install --frozen-lockfile
 
-    - name: Build
+      - name: Build
         working-directory: ./fronted
         env:
         VITE_API_BASE_URL: https://106.54.172.107/api
