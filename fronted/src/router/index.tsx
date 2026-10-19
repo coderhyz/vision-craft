@@ -1,7 +1,8 @@
 import {
     Navigate,
     Outlet,
-    createBrowserRouter,
+    // createBrowserRouter,
+    createHashRouter,
     isRouteErrorResponse,
     useLocation,
     useRouteError,
@@ -95,7 +96,7 @@ const RouteContainer = () => (
 export const routerFallbackElement = <RouteFallback />;
 
 // eslint-disable-next-line react-refresh/only-export-components
-export const router = createBrowserRouter([
+export const router = createHashRouter([
     {
         // 全局的根路由，负责提供 Suspense 兜底，懒加载路由
         element: <RouteContainer />,

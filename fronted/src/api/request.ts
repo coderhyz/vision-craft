@@ -28,7 +28,9 @@ http.interceptors.response.use(
             localStorage.removeItem("user");
             localStorage.removeItem("userId");
             if (window.location.pathname !== "/auth") {
-                window.location.href = "/auth";
+                window.location.replace(
+                    `${import.meta.env.BASE_URL}#/auth`
+                );
             }
         }
         return Promise.reject(error);
