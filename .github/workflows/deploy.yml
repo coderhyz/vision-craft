@@ -47,7 +47,7 @@ jobs:
       - name: Build
         working-directory: ./fronted
         env:
-        VITE_API_BASE_URL: https://106.54.172.107/api
+          VITE_API_BASE_URL: https://106.54.172.107/api
         run: pnpm exec vite build
 
       - name: Configure Pages
