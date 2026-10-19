@@ -4,7 +4,7 @@ import { useSchemaStore } from "@/store/schema-store";
 import { useShallow } from "zustand/shallow";
 import type { ComponentNode } from "@/core/schema/basic";
 import type { AgentStep, ChatMessage } from "@/types/chat";
-
+import { API_BASE_URL } from "@/api/config";
 export type { ChatMessage };
 
 export interface SubmitOptions {
@@ -226,7 +226,7 @@ export function useAIGenerate() {
             params.set("sessionId", sessionIdRef.current);
         }
         const sse = new EventSource(
-            `http://localhost:3000/api/ai/schema/generate?${params.toString()}`
+            `${API_BASE_URL}/ai/schema/generate?${params.toString()}`
         );
         sseRef.current = sse;
 

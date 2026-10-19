@@ -3,9 +3,10 @@ import axios, {
     type AxiosResponse,
     type AxiosError,
 } from "axios";
+import { API_BASE_URL } from "./config";
 // axios实例
 const http = axios.create({
-    baseURL: "http://localhost:3000/api",
+    baseURL: API_BASE_URL,
     timeout: 300000,
 });
 

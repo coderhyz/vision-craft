@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { nanoid } from "nanoid";
 import type { ChatMessage, DocumentSource } from "@/types/chat";
-
+import { API_BASE_URL } from "@/api/config";
 export function useAIChat() {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [loading, setLoading] = useState(false);
@@ -65,7 +65,7 @@ export function useAIChat() {
         }
 
         const sse = new EventSource(
-            `http://localhost:3000/api/ai/chat?${params.toString()}`,
+            `${API_BASE_URL}/ai/chat?${params.toString()}`,
         );
         sseRef.current = sse;
 
