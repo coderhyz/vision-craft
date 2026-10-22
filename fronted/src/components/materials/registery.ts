@@ -19,6 +19,8 @@ import Divider from "./basic/Divider";
 import Badge from "./basic/Badge";
 import Tag from "./basic/Tag";
 import Switch from "./basic/Switch";
+import Avatar from "./basic/Avatar";
+import Rate from "./basic/Rate";
 import BarChart from "./chart/BarChart";
 import MultiBarChart from "./chart/MultiBarChart";
 import LineChart from "./chart/LineChart";
@@ -33,6 +35,8 @@ import RadarChart from "./chart/RadarChart";
 import FunnelChart from "./chart/FunnelChart";
 import GaugeChart from "./chart/GaugeChart";
 import TreemapChart from "./chart/TreemapChart";
+
+
 
 /**
  * 组件注册表类
@@ -119,6 +123,8 @@ ComponentRegistryManager.register("Divider", Divider as unknown as RegistryCompo
 ComponentRegistryManager.register("Badge", Badge as unknown as RegistryComponent);
 ComponentRegistryManager.register("Tag", Tag as unknown as RegistryComponent);
 ComponentRegistryManager.register("Switch", Switch as unknown as RegistryComponent);
+ComponentRegistryManager.register("Avatar", Avatar as unknown as RegistryComponent)
+ComponentRegistryManager.register("Rate", Rate as unknown as RegistryComponent)
 ComponentRegistryManager.register("BarChart", BarChart as unknown as RegistryComponent);
 ComponentRegistryManager.register("MultiBarChart", MultiBarChart as unknown as RegistryComponent);
 ComponentRegistryManager.register("LineChart", LineChart as unknown as RegistryComponent);

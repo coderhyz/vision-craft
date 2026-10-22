@@ -83,7 +83,7 @@ const AuthGuard = () => {
                 from: location
             }} />;
     }
-
+    // 如果有 token，则渲染子路由
     return <Outlet />;
 };
 // 根容器，负责为所有懒加载页面提供 Suspense 兜底
