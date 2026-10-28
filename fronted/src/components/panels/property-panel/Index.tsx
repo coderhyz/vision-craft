@@ -136,11 +136,11 @@ export default function PropertyPanel() {
     ];
     // 头部的选项
     const renderHeader = () => (
-        <div className="flex items-center gap-1 border-b border-slate-200 px-2 py-1.5">
+        <div className="grid shrink-0 grid-cols-3 gap-1 border-b border-slate-200 px-1.5 py-1.5">
             {tabs.map((tab) => (
                 <button
                     key={tab.key}
-                    className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${mode === tab.key
+                    className={`inline-flex min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-md px-1 py-1.5 text-xs font-medium transition-all ${mode === tab.key
                         ? tab.key === "ai"
                             ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
                             : "bg-brand-50 text-brand-600 border border-brand-200"

@@ -24,6 +24,13 @@ body.is-dnd-dragging * {
   min-height: 100vh;
 }
 
+/* 侧栏随屏幕收窄，宽屏也限制上限，将更多空间留给画布。
+   面板内容与 Sider 共用宽度，折叠动画期间仍保留内部状态。 */
+.vc-editor-layout {
+  --editor-materials-width: clamp(280px, 16vw, 320px);
+  --editor-properties-width: clamp(260px, 15vw, 300px);
+}
+
 /* 滚动条 */
 ::-webkit-scrollbar {
   width: 6px;

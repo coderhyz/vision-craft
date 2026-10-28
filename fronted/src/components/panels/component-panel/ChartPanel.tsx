@@ -11,13 +11,13 @@ interface ChartItem { type: string; name: string; icon: React.ReactNode; }
 function ChartPanelItem({ type, name, icon }: ChartItem) {
     return (
         <DraggableItem id={type}>
-            <div className="w-[100px] h-[100px] 
+            <div className="w-full min-w-0 h-[88px]
             flex flex-col items-center justify-evenly 
             rounded-lg border border-slate-200
             bg-white cursor-grab text-slate-500 text-xs transition-all duration-200
             hover:border-cyan-300 hover:bg-cyan-50/50 hover:text-cyan-600 active:scale-95 shadow-soft">
                 <div>{icon}</div>
-                <p>{name}</p>
+                <p className="px-1 text-center leading-4 break-words">{name}</p>
             </div>
         </DraggableItem>
     );
@@ -53,9 +53,9 @@ const chartItemsByCategory: Record<ChartCategory, ChartItem[]> = {
 export default function ChartPanel({ category }: { category: ChartCategory }) {
     const chartItems = chartItemsByCategory[category] ?? chartItemsByCategory.bar;
     return (
-        <div className="h-full min-h-0 w-[245px]
-            grid grid-cols-2 grid-rows-component 
-            gap-3 overflow-y-auto p-3">
+        <div className="h-full min-h-0 min-w-0 flex-1
+            grid grid-cols-2 auto-rows-[88px] content-start
+            gap-2 overflow-y-auto overflow-x-hidden p-2">
             {chartItems.map((item) => <ChartPanelItem key={item.type} {...item} />)}
         </div>
     );

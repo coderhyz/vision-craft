@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { MenuProps } from "antd";
-import { Menu } from "antd";
+import { ConfigProvider, Menu } from "antd";
 import { Puzzle, ChartArea } from "lucide-react";
 import BasicPanel from "./BasicPanel";
 import ChartPanel from "./ChartPanel";
@@ -19,12 +19,12 @@ type ItemType = "basic" | "charts-bar" | "charts-line" | "charts-pie" | "charts-
 const items: MenuItem[] = [
     {
         key: "basic",
-        icon: <Puzzle className="h-4 w-4" />,
+        icon: <Puzzle className="h-3.5 w-3.5" />,
         label: "基础组件"
     },
     {
         key: "charts",
-        icon: <ChartArea className="h-4 w-4" />,
+        icon: <ChartArea className="h-3.5 w-3.5" />,
         label: "图表组件",
         children: [
             { key: "charts-bar", label: "柱状图" },
@@ -58,11 +58,13 @@ export default function SidebarMenu({ className }: { className?: string }) {
     const chartCategory = chartMenuKeyMap[selectedKey];
 
     return (
-        <div className={`flex min-h-0 overflow-hidden ${className}`}>
+        <div className={`flex min-h-0 min-w-0 overflow-hidden ${className}`}>
             {/* 菜单组件 */}
-            <Menu className="w-[155px] h-full shrink-0 overflow-y-auto"
+            <ConfigProvider theme={{ components: { Menu: { fontSize: 12, itemHeight: 36, iconMarginInlineEnd: 6 } } }}>
+            <Menu className="h-full shrink-0 overflow-y-auto"
+                style={{ width: 120 }}
                 mode="inline"
-                inlineIndent={16}
+                inlineIndent={8}
                 // 菜单项目
                 items={items}
                 // 选中的菜单项
@@ -72,6 +74,7 @@ export default function SidebarMenu({ className }: { className?: string }) {
                 // 菜单项点击事件
                 onSelect={handleItemSelected}
             />
+            </ConfigProvider>
             {/* 组件面板 */}
             {selectedKey === "basic" && <BasicPanel />}
             {chartCategory && <ChartPanel category={chartCategory} />}

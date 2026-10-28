@@ -196,13 +196,13 @@ export default function DataSourceEditor({ componentType, dataSource, onChange }
                         <div className="flex flex-col gap-2">
                             {slots.map((slot) => (
                                 <div key={slot.key} className="flex items-center gap-2">
-                                    <Text className="w-24 shrink-0 text-xs text-slate-600">
+                                    <Text className="w-20 shrink-0 text-xs text-slate-600">
                                         {slot.label}
                                         {slot.required && <span className="text-red-400"> *</span>}
                                     </Text>
                                     <Select
                                         size="small"
-                                        className="flex-1"
+                                        className="min-w-0 flex-1"
                                         value={fieldMapping[slot.key] ?? undefined}
                                         placeholder="选择字段"
                                         allowClear

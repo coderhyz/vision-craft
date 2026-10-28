@@ -16,14 +16,14 @@ function PanelItem({ type, name, icon }: BaseComponentItem) {
         <DraggableItem id={type}>
             {/* children */}
             <div className="
-                w-[100px] h-[100px] flex flex-col items-center justify-evenly 
+                w-full min-w-0 h-[88px] flex flex-col items-center justify-evenly
                 rounded-lg border border-slate-200 bg-white cursor-grab
                 text-slate-500 text-xs transition-all duration-200 
                 hover:border-brand-300 hover:bg-brand-50/50 hover:text-brand-600 active:scale-95 shadow-soft">
                 {/*  组件图标 */}
                 <div>{icon}</div>
                 {/* 组件名称 */}
-                <p>{name}</p>
+                <p className="px-1 text-center leading-4 break-words">{name}</p>
             </div>
         </DraggableItem>
     );
@@ -46,8 +46,8 @@ export default function BasicPanel() {
     ];
 
     return (
-        <div className="w-[245px]  h-full min-h-0 grid grid-cols-2 gap-3 grid-rows-component content-start
-        overflow-y-auto p-3 ">
+        <div className="h-full min-h-0 min-w-0 flex-1 grid grid-cols-2 auto-rows-[88px] gap-2 content-start
+        overflow-y-auto overflow-x-hidden p-2">
             {component.map((item) => {
                 // 展开语法 
                 return <PanelItem key={item.type}  {...item} />

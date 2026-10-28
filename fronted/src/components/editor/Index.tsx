@@ -209,13 +209,13 @@ export default function Index() {
                 </div>
                 {/*   组装拖拽上下文、物料面板和画布 */}
                 <DndWrapper scale={scale}>
-                    <Layout hasSider className="min-h-0 flex-1" style={{ background: "transparent" }}>
+                    <Layout hasSider className="vc-editor-layout min-h-0 flex-1" style={{ background: "transparent" }}>
                         {/* 侧边栏菜单 */}
                         <Layout.Sider
                             id="editor-materials-panel"
                             aria-label="物料面板"
                             theme="light"
-                            width={400}
+                            width="var(--editor-materials-width)"
                             collapsible
                             collapsed={materialsCollapsed}
                             collapsedWidth={0}
@@ -223,7 +223,7 @@ export default function Index() {
                             style={{ overflow: "hidden" }}
                         >
                             {/* 保留挂载，折叠时不丢失菜单分类和面板状态。 */}
-                            <div className={`h-full w-[400px] ${materialsCollapsed ? "invisible" : "visible"}`}>
+                            <div className={`h-full ${materialsCollapsed ? "invisible" : "visible"}`} style={{ width: "var(--editor-materials-width)" }}>
                                 <SidebarMenu className="h-full border-r border-slate-200 bg-white" />
                             </div>
                         </Layout.Sider>
@@ -349,14 +349,14 @@ export default function Index() {
                             id="editor-properties-panel"
                             aria-label="属性面板"
                             theme="light"
-                            width={350}
+                            width="var(--editor-properties-width)"
                             collapsible
                             collapsed={propertiesCollapsed}
                             collapsedWidth={0}
                             trigger={null}
                             style={{ overflow: "hidden" }}
                         >
-                            <div className={`h-full w-[350px] overflow-hidden border-l border-slate-200 bg-white ${propertiesCollapsed ? "invisible" : "visible"}`}>
+                            <div className={`h-full overflow-hidden border-l border-slate-200 bg-white ${propertiesCollapsed ? "invisible" : "visible"}`} style={{ width: "var(--editor-properties-width)" }}>
                                 <PropertyPanel />
                             </div>
                         </Layout.Sider>
