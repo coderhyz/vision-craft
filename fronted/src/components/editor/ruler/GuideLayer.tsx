@@ -14,10 +14,9 @@ interface GuideLayerProps {
  */
 export function GuideLayer({ scale, width, height }: GuideLayerProps) {
     // 高亮辅助线的位置
-    const { activeSnaps, setActiveSnaps } = useGuideStore(
+    const { activeSnaps } = useGuideStore(
         useShallow((state) => ({
             activeSnaps: state.activeSnaps,
-            setActiveSnaps: state.setActiveSnaps,
         })),
     );
     // 没有就不显示 与 拖拽组件联动 RndItem.tsx

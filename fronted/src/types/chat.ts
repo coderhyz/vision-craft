@@ -14,7 +14,7 @@ export interface ChatMessage {
 
 export interface AgentStep {
     id: string;
-    kind: "thinking" | "tool";
+    kind: "thinking" | "tool" | "reasoning";
     title: string;
     detail?: string;
     status: "running" | "done" | "error";

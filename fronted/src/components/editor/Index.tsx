@@ -12,7 +12,8 @@ import { getPageById } from "@/api/page";
 import { useZoom } from "@/hooks/useZoom";
 import { Ruler, RULER_THICKNESS } from "@/components/editor/ruler/Ruler";
 import { GuideLayer } from "@/components/editor/ruler/GuideLayer";
-import { Minus, Plus, Maximize, RotateCcw } from "lucide-react";
+import { Minus, Plus, Maximize, RotateCcw, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { Button, Layout, Tooltip } from "antd";
 // 将值转换为数字，如果无法转换则返回默认值
 const toNumber = (value: number | string | undefined, fallback: number) => {
     if (typeof value === "number") return value;
@@ -26,12 +27,16 @@ export default function Index() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    // 是否折叠物料面板和属性面板
+    const [materialsCollapsed, setMaterialsCollapsed] = useState(false);
+    const [propertiesCollapsed, setPropertiesCollapsed] = useState(false);
     // 页面的id
     const [pageId, setPageId] = useState<string | null>(null);
     // 刷新间隔
     const [refreshFlag, setRefreshFlag] = useState(0);
     // 画布容器
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
     // 画布的可视区域尺寸
     const [viewport, setViewport] = useState<{ width: number; height: number } | null>(null);
     const [scroll, setScroll] = useState({ left: 0, top: 0 });
@@ -113,6 +118,24 @@ export default function Index() {
             top: node.scrollTop
         });
     };
+    // 侧栏动画和窗口变化都会改变可视区域；手动缩放时也要更新标尺和居中位置。
+    useLayoutEffect(() => {
+        const node = containerRef.current;
+        if (!node) return;
+
+        const observer = new ResizeObserver(() => {
+            const width = node.clientWidth;
+            const height = node.clientHeight;
+            setContainerSize((previous) =>
+                previous.width === width && previous.height === height
+                    ? previous
+                    : { width, height },
+            );
+        });
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [loading, error]);
+
     // 缩放后始终让可视区域对准画布中心；画布小于容器时由下方舞台负责居中。
     useLayoutEffect(() => {
         const node = containerRef.current;
@@ -126,14 +149,14 @@ export default function Index() {
         });
 
         return () => cancelAnimationFrame(frame);
-    }, [scaledWidth, scaledHeight, viewport]);
+    }, [scaledWidth, scaledHeight, viewport, containerSize]);
 
     const canvasOffsetX = Math.max(
-        ((containerRef.current?.clientWidth ?? 0) - scaledWidth) / 2,
+        (containerSize.width - scaledWidth) / 2,
         0,
     );
     const canvasOffsetY = Math.max(
-        ((containerRef.current?.clientHeight ?? 0) - scaledHeight) / 2,
+        (containerSize.height - scaledHeight) / 2,
         0,
     );
     // 标尺视口
@@ -179,111 +202,166 @@ export default function Index() {
     return (
         <>
             {/* 总体的页面布局 */}
-            <div className="grid grid-cols-custom grid-rows-header h-screen  overflow-hidden bg-slate-100/60">
+            <div className="flex h-screen flex-col overflow-hidden bg-slate-100/60">
                 {/* 工具栏 */}
-                <div className="row-start-1 row-end-2 col-start-1 col-end-4">
+                <div className="h-14 shrink-0">
                     <Toolbar pageId={pageId} onPageIdChange={setPageId} />
                 </div>
                 {/*   组装拖拽上下文、物料面板和画布 */}
                 <DndWrapper scale={scale}>
-                    {/* 侧边栏菜单 */}
-                    <SidebarMenu className="border-r border-slate-200 bg-white" />
-                    {/* 中间的画布编辑器 */}
-                    <div className="flex min-h-0 min-w-0 flex-col">
-                        {/* 缩放栏 */}
-                        <div className="flex items-center justify-between border-b border-slate-200 bg-white px-3 py-1.5 text-xs">
-                            <div className="flex items-center gap-3 text-slate-500">
-                                <span>画布 {viewport?.width ?? "--"} × {viewport?.height ?? "--"}</span>
-                                <span className="text-slate-400">{Math.round(scale * 100)}%</span>
+                    <Layout hasSider className="min-h-0 flex-1" style={{ background: "transparent" }}>
+                        {/* 侧边栏菜单 */}
+                        <Layout.Sider
+                            id="editor-materials-panel"
+                            aria-label="物料面板"
+                            theme="light"
+                            width={400}
+                            collapsible
+                            collapsed={materialsCollapsed}
+                            collapsedWidth={0}
+                            trigger={null}
+                            style={{ overflow: "hidden" }}
+                        >
+                            {/* 保留挂载，折叠时不丢失菜单分类和面板状态。 */}
+                            <div className={`h-full w-[400px] ${materialsCollapsed ? "invisible" : "visible"}`}>
+                                <SidebarMenu className="h-full border-r border-slate-200 bg-white" />
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <button
-                                    className={`rounded-md border p-1 transition-all ${autoFit ? "border-brand-200 text-brand-500 bg-brand-50" : "border-slate-200 text-slate-400 hover:border-brand-200 hover:text-brand-500"}`}
-                                    onClick={() => setAutoFit((v) => !v)}
-                                >
-                                    <Maximize className="h-3.5 w-3.5" />
-                                </button>
-                                <div className="flex items-center gap-0.5 ml-1">
-                                    <button className="rounded-md border border-slate-200 p-1 text-slate-400 hover:border-brand-200 hover:text-brand-500 transition-all" onClick={() => handleZoomChange(manualZoom - 0.1)}>
-                                        <Minus className="h-3.5 w-3.5" />
+                        </Layout.Sider>
+                        {/* 中间的画布编辑器 */}
+                        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+                            {/* 缩放栏 */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-1.5 text-xs">
+                                <div className="flex items-center gap-3 text-slate-500">
+                                    <Tooltip title={materialsCollapsed ? "展开左侧物料面板" : "隐藏左侧物料面板"}>
+                                        <Button
+                                            size="small"
+                                            type={materialsCollapsed ? "default" : "text"}
+                                            aria-label={materialsCollapsed ? "显示物料面板" : "隐藏物料面板"}
+                                            aria-expanded={!materialsCollapsed}
+                                            aria-controls="editor-materials-panel"
+                                            icon={materialsCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+                                            onClick={() => setMaterialsCollapsed((value) => !value)}
+                                        >
+                                            物料面板
+                                        </Button>
+                                    </Tooltip>
+                                    <span className="whitespace-nowrap">画布 {viewport?.width ?? "--"} × {viewport?.height ?? "--"}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        className={`rounded-md border p-1 transition-all ${autoFit ? "border-brand-200 text-brand-500 bg-brand-50" : "border-slate-200 text-slate-400 hover:border-brand-200 hover:text-brand-500"}`}
+                                        onClick={() => setAutoFit((v) => !v)}
+                                    >
+                                        <Maximize className="h-3.5 w-3.5" />
                                     </button>
-                                    <span className="w-12 text-center text-xs text-slate-500">{Math.round(scale * 100)}%</span>
-                                    <button className="rounded-md border border-slate-200 p-1 text-slate-400 hover:border-brand-200 hover:text-brand-500 transition-all" onClick={() => handleZoomChange(manualZoom + 0.1)}>
-                                        <Plus className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button className="rounded-md border border-slate-200 p-1 text-slate-400 hover:border-brand-200 hover:text-brand-500 transition-all ml-0.5" onClick={handleResetZoom}>
-                                        <RotateCcw className="h-3.5 w-3.5" />
-                                    </button>
+                                    <div className="flex items-center gap-0.5 ml-1">
+                                        <button className="rounded-md border border-slate-200 p-1 text-slate-400 hover:border-brand-200 hover:text-brand-500 transition-all" onClick={() => handleZoomChange(manualZoom - 0.1)}>
+                                            <Minus className="h-3.5 w-3.5" />
+                                        </button>
+                                        <span className="w-12 text-center text-xs text-slate-500">{Math.round(scale * 100)}%</span>
+                                        <button className="rounded-md border border-slate-200 p-1 text-slate-400 hover:border-brand-200 hover:text-brand-500 transition-all" onClick={() => handleZoomChange(manualZoom + 0.1)}>
+                                            <Plus className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button className="rounded-md border border-slate-200 p-1 text-slate-400 hover:border-brand-200 hover:text-brand-500 transition-all ml-0.5" onClick={handleResetZoom}>
+                                            <RotateCcw className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                    <div className="ml-2 border-l border-slate-200 pl-2">
+                                        <Tooltip title={propertiesCollapsed ? "展开右侧属性面板" : "隐藏右侧属性面板"}>
+                                            <Button
+                                                size="small"
+                                                type={propertiesCollapsed ? "default" : "text"}
+                                                aria-label={propertiesCollapsed ? "显示属性面板" : "隐藏属性面板"}
+                                                aria-expanded={!propertiesCollapsed}
+                                                aria-controls="editor-properties-panel"
+                                                icon={propertiesCollapsed ? <PanelRightOpen size={15} /> : <PanelRightClose size={15} />}
+                                                onClick={() => setPropertiesCollapsed((value) => !value)}
+                                            >
+                                                属性面板
+                                            </Button>
+                                        </Tooltip>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        {/* 画布区域 */}
-                        <div className="relative flex min-h-0 flex-1 overflow-hidden">
-                            {/* 白色小方块 */}
-                            <div className="absolute left-0 top-0 z-20 bg-white"
-                                style={{
-                                    width: RULER_THICKNESS, height: RULER_THICKNESS,
-                                    borderBottom: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0"
-                                }} />
-                            <div className="absolute left-[28px] right-0 top-0 z-20">
-                                {/* x标尺 */}
-                                <Ruler orientation="x" viewport={rulerViewport} scale={scale} scroll={scroll.left} containerSize={containerRef.current?.clientWidth ?? 0} canvasOffset={canvasOffsetX} />
-                            </div>
-                            <div className="absolute bottom-0 left-0 top-[28px] z-20">
-                                <Ruler orientation="y" viewport={rulerViewport} scale={scale} scroll={scroll.top} containerSize={containerRef.current?.clientHeight ?? 0} canvasOffset={canvasOffsetY} />
-                            </div>
-                            {/* 画布 */}
-                            <div className="ml-[28px] mt-[28px] flex-1 overflow-hidden" style={{ minWidth: 0, minHeight: 0 }}>
-                                {/* 画布容器；真正的可放置区域由 RootContainer 注册，避免同一 id 重复注册。 */}
-                                <div
-                                    ref={containerRef}
-                                    id="canvas"
-                                    className="relative h-full w-full min-w-0 overflow-auto bg-slate-100/80"
+                            {/* 画布区域 */}
+                            <div className="relative flex min-h-0 flex-1 overflow-hidden">
+                                {/* 白色小方块 */}
+                                <div className="absolute left-0 top-0 z-20 bg-white"
                                     style={{
-                                        backgroundImage: "radial-gradient(circle, #e2e8f0 0.5px, transparent 0.5px)",
-                                        backgroundSize: "16px 16px"
-                                    }}
-                                    onScroll={handleScroll}
-                                >
-                                    {/* 居中舞台：画布较小时居中，较大时扩展为可滚动区域 */}
+                                        width: RULER_THICKNESS, height: RULER_THICKNESS,
+                                        borderBottom: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0"
+                                    }} />
+                                <div className="absolute left-[28px] right-0 top-0 z-20">
+                                    {/* x标尺 */}
+                                    <Ruler orientation="x" viewport={rulerViewport} scale={scale} scroll={scroll.left} containerSize={containerSize.width} canvasOffset={canvasOffsetX} />
+                                </div>
+                                <div className="absolute bottom-0 left-0 top-[28px] z-20">
+                                    <Ruler orientation="y" viewport={rulerViewport} scale={scale} scroll={scroll.top} containerSize={containerSize.height} canvasOffset={canvasOffsetY} />
+                                </div>
+                                {/* 画布 */}
+                                <div className="ml-[28px] mt-[28px] flex-1 overflow-hidden" style={{ minWidth: 0, minHeight: 0 }}>
+                                    {/* 画布容器；真正的可放置区域由 RootContainer 注册，避免同一 id 重复注册。 */}
                                     <div
-                                        className="grid min-h-full min-w-full place-items-center"
+                                        ref={containerRef}
+                                        id="canvas"
+                                        className="relative h-full w-full min-w-0 overflow-auto bg-slate-100/80"
                                         style={{
-                                            width: `max(100%, ${scaledWidth}px)`,
-                                            height: `max(100%, ${scaledHeight}px)`,
+                                            backgroundImage: "radial-gradient(circle, #e2e8f0 0.5px, transparent 0.5px)",
+                                            backgroundSize: "16px 16px"
                                         }}
+                                        onScroll={handleScroll}
                                     >
-                                        {/* 画布内容 */}
-                                        <div className="relative" style={{
-                                            width: scaledWidth, height: scaledHeight
-                                        }}>
-                                            <div
-                                                data-canvas-content="true"
-                                                style={{
-                                                    width: viewport?.width ?? 0, height: viewport?.height ?? 0,
-                                                    transform: `scale(${scale})`, transformOrigin: "top left",
-                                                    position: "absolute", inset: 0
-                                                }}
-                                            >
-                                                {/*组件数据为空  */}
-                                                {isCanvasEmpty && <CanvasEmpty />}
-                                                {/* 渲染组件树 */}
-                                                <Renderer schema={schema!} scale={scale} />
+                                        {/* 居中舞台：画布较小时居中，较大时扩展为可滚动区域 */}
+                                        <div
+                                            className="grid min-h-full min-w-full place-items-center"
+                                            style={{
+                                                width: `max(100%, ${scaledWidth}px)`,
+                                                height: `max(100%, ${scaledHeight}px)`,
+                                            }}
+                                        >
+                                            {/* 画布内容 */}
+                                            <div className="relative" style={{
+                                                width: scaledWidth, height: scaledHeight
+                                            }}>
+                                                <div
+                                                    data-canvas-content="true"
+                                                    style={{
+                                                        width: viewport?.width ?? 0, height: viewport?.height ?? 0,
+                                                        transform: `scale(${scale})`, transformOrigin: "top left",
+                                                        position: "absolute", inset: 0
+                                                    }}
+                                                >
+                                                    {/*组件数据为空  */}
+                                                    {isCanvasEmpty && <CanvasEmpty />}
+                                                    {/* 渲染组件树 */}
+                                                    <Renderer schema={schema!} scale={scale} />
+                                                </div>
+                                                {/* 指南层 */}
+                                                <GuideLayer scale={scale} width={scaledWidth} height={scaledHeight} />
                                             </div>
-                                            {/* 指南层 */}
-                                            <GuideLayer scale={scale} width={scaledWidth} height={scaledHeight} />
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
+                        </main>
+                        {/* 属性面板 */}
+                        <Layout.Sider
+                            id="editor-properties-panel"
+                            aria-label="属性面板"
+                            theme="light"
+                            width={350}
+                            collapsible
+                            collapsed={propertiesCollapsed}
+                            collapsedWidth={0}
+                            trigger={null}
+                            style={{ overflow: "hidden" }}
+                        >
+                            <div className={`h-full w-[350px] overflow-hidden border-l border-slate-200 bg-white ${propertiesCollapsed ? "invisible" : "visible"}`}>
+                                <PropertyPanel />
+                            </div>
+                        </Layout.Sider>
+                    </Layout>
                 </DndWrapper>
-                {/* 属性面板 */}
-                <div className="h-full overflow-hidden border-l border-slate-200 bg-white">
-                    {/* 属性面板 */}
-                    <PropertyPanel />
-                </div>
             </div>
         </>
     );

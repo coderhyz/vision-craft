@@ -8,8 +8,8 @@ export default function Divider({ node }: RendererProps) {
     return (
         <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center" }}>
             <AntDivider
-                type={props.direction}
-                orientation={props.textPosition}
+                orientation={props.direction}
+                titlePlacement={props.textPosition}
                 style={{
                     borderColor: props.color,
                     borderStyle: props.lineStyle,

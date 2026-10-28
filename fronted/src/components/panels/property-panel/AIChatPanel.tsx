@@ -11,7 +11,6 @@ import {
     RotateCcw,
     Info,
     Sparkles,
-    BookOpen,
     FileText,
     BrainCircuit,
     Wrench,

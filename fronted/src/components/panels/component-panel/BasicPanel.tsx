@@ -1,5 +1,5 @@
 import type React from "react";
-import { AlignJustify, Box, Clock3, Image, MousePointerClick, TrendingUp, Activity, Timer, Minus, Bell, TagIcon, UserCircle, Star, ToggleLeft } from "lucide-react";
+import { AlignJustify, Clock3, Image, MousePointerClick, TrendingUp, Activity, Timer, Minus, Bell, TagIcon, UserCircle, Star } from "lucide-react";
 import DraggableItem from "@/core/dnd-kit/DraggableItem";
 
 interface BaseComponentItem {
