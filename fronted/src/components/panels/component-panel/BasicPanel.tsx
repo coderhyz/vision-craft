@@ -1,5 +1,5 @@
 import type React from "react";
-import { AlignJustify, Clock3, Image, MousePointerClick, TrendingUp, Activity, Timer, Minus, Bell, TagIcon, UserCircle, Star } from "lucide-react";
+import { AlignJustify, Clock3, Image, MousePointerClick, TrendingUp, Activity, Timer, Minus, Bell, TagIcon, UserCircle, Star, ToggleLeft, Square } from "lucide-react";
 import DraggableItem from "@/core/dnd-kit/DraggableItem";
 
 interface BaseComponentItem {
@@ -43,6 +43,8 @@ export default function BasicPanel() {
         { type: "Tag", name: "标签", icon: <TagIcon className="h-5 w-5" /> },
         { type: "Avatar", name: "头像", icon: <UserCircle className="h-5 w-5" /> },
         { type: "Rate", name: "评分", icon: <Star className="h-5 w-5" /> },
+        { type: "Switch", name: "开关", icon: <ToggleLeft className="h-5 w-5" /> },
+        { type: "Container", name: "容器", icon: <Square className="h-5 w-5" /> },
     ];
 
     return (

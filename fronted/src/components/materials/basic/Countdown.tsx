@@ -94,8 +94,8 @@ export default function Countdown({ node }: RendererProps) {
                     alignCss === "center"
                         ? "center"
                         : alignCss === "right"
-                          ? "flex-end"
-                          : "flex-start",
+                            ? "flex-end"
+                            : "flex-start",
                 color: props.color,
                 fontSize: props.fontSize,
                 fontWeight: props.fontWeight,
