@@ -6,27 +6,7 @@ import type { ComponentNode } from "@/core/schema/basic";
 // 
 import { createTreeOperations } from "@/hooks/useTreeOperation";
 import { DEFAULT_GRID_SIZE, normalizeGridSize } from "@/core/utils/grid";
-
-type ComponentStyle = NonNullable<ComponentNode["style"]>;
-
-/** 将组件的坐标和尺寸限制在根画布范围内 */
-const clampStyleToCanvas = (
-    style: ComponentStyle,
-    settings: PageDSL["settings"],
-): ComponentStyle => {
-    const canvasWidth = Math.max(1, Number(settings.width) || 1920);
-    const canvasHeight = Math.max(1, Number(settings.height) || 1080);
-    const width = Math.min(Math.max(1, Number(style.width) || 1), canvasWidth);
-    const height = Math.min(Math.max(1, Number(style.height) || 1), canvasHeight);
-
-    return {
-        ...style,
-        width,
-        height,
-        left: Math.min(Math.max(0, Number(style.left) || 0), canvasWidth - width),
-        top: Math.min(Math.max(0, Number(style.top) || 0), canvasHeight - height),
-    };
-};
+import { findParentContainer, getContainerBounds, clampStyleToBounds, clampContainerChildren } from "@/core/utils/container";
 // 创建树操作方法
 const { findNodeById, addNodeToParent, removeNodeById, updateNodeById } =
     createTreeOperations();
@@ -201,15 +181,21 @@ export const useSchemaStore = create<SchemaState>()(
             let success = false;
             set((state) => {
                 if (!state.schema) return;
+                const parent = findNodeById(parentId, state.schema);
+                if (!parent || (parent.type !== "Container" && parent.type !== "RootContainer")) return;
                 const safeNode = newNode.style
                     ? {
                         ...newNode,
-                        style: clampStyleToCanvas(newNode.style, state.schema.settings),
+                        style: clampStyleToBounds(newNode.style, getContainerBounds(parent)),
                     } as ComponentNode
                     : newNode;
                 // 通过通用工具函数向指定父节点添加子节点
                 // 注意：依赖 immer 提供的草稿对象，直接修改即可触发更新
                 success = addNodeToParent(parentId, state.schema, safeNode);
+                if (success && safeNode.type === "Container") {
+                    const added = findNodeById(safeNode.id, state.schema);
+                    if (added?.type === "Container") clampContainerChildren(added);
+                }
             });
             // 返回是否成功
             return success;
@@ -233,8 +219,8 @@ export const useSchemaStore = create<SchemaState>()(
                 if (!state.schema) return;
                 // 通过通用工具函数删除指定节点
                 success = removeNodeById(id, state.schema);
-                // 如果删除的是当前选中节点，清空选中状态
-                if (success && state.selectedId === id) {
+                // 删除容器时，也要清空已被一并删除的选中后代。
+                if (success && state.selectedId && !findNodeById(state.selectedId, state.schema)) {
                     state.selectedId = null;
                     state.selectedNode = null;
                 }
@@ -257,10 +243,11 @@ export const useSchemaStore = create<SchemaState>()(
             set((state) => {
                 if (!state.schema) return;
                 const currentNode = findNodeById(id, state.schema) as ComponentNode | null;
+                const parent = findParentContainer(id, state.schema);
                 const safeUpdates = updates.style && currentNode
                     ? {
                         ...updates,
-                        style: clampStyleToCanvas(
+                        style: clampStyleToBounds(
                             {
                                 top: 0,
                                 left: 0,
@@ -270,15 +257,18 @@ export const useSchemaStore = create<SchemaState>()(
                                 ...currentNode.style,
                                 ...updates.style,
                             },
-                            state.schema.settings,
+                            getContainerBounds(parent ?? state.schema),
                         ),
                     } as Partial<ComponentNode>
                     : updates;
                 // 通过通用工具函数更新指定节点
                 success = updateNodeById(id, state.schema!, safeUpdates);
-                // 如果更新的是当前选中节点，同步 selectedNode
-                if (success && state.selectedId === id) {
-                    const node = findNodeById(id, state.schema!);
+                if (success && currentNode?.type === "Container" && (updates.style || updates.props)) {
+                    clampContainerChildren(currentNode);
+                }
+                // 容器缩放可能更新当前选中的后代节点。
+                if (success && state.selectedId) {
+                    const node = findNodeById(state.selectedId, state.schema!);
                     state.selectedNode = node ? (node as ComponentNode) : null;
                 }
             });

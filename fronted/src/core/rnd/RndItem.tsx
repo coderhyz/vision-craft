@@ -1,11 +1,13 @@
 import { Rnd } from "react-rnd";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Modal } from "antd";
 import type { ComponentNode } from "@/core/schema/basic";
 import { useSchemaStore } from "@/store/schema-store";
 import { useGuideStore } from "@/store/guide-store";
 import { useShallow } from "zustand/shallow";
 import { normalizeGridSize, snapToGrid } from "@/core/utils/grid";
+import { clampStyleToBounds } from "@/core/utils/container";
+import { getCanvasGuidePosition } from "@/core/utils/guide";
 import SelectionOverlay from "./SelectionOverlay";
 import AiEditInput from "./AiEditInput";
 import type { DraggableData, ResizableDelta, Position } from "react-rnd";
@@ -18,6 +20,8 @@ interface RndItemProps {
     children: React.ReactNode;
     // 画布缩放倍率，传给 Rnd 以修正拖拽/缩放坐标
     scale?: number;
+    layout?: "absolute" | "flex";
+    containerBounds?: { width: number; height: number };
 }
 
 /**
@@ -27,7 +31,8 @@ interface RndItemProps {
  * - 在拖拽 / 缩放结束时把最新的位置和尺寸回写到 schema-store
  * - 同时承载「选中态」的点击事件，选中态 UI 委托给 SelectionOverlay 和 AiEditInput
  */
-export default function RndItem({ node, children, scale = 1 }: RndItemProps) {
+export default function RndItem({ node, children, scale = 1, layout = "absolute", containerBounds }: RndItemProps) {
+    const isFlex = layout === "flex";
     // 从 schema-store 中获取更新节点、删除节点、选中态等方法
     const { updateItem, removeItem, selectedId, setSelectedId, gridSize } =
         useSchemaStore(
@@ -50,32 +55,44 @@ export default function RndItem({ node, children, scale = 1 }: RndItemProps) {
     const resolvedGridSize = normalizeGridSize(gridSize);
 
     // 兜底的样式，防御 style 为空的情况，避免 Rnd 报错
-    const style = node.style ?? {
+    const style = useMemo(() => node.style ?? {
         top: 0,
         left: 0,
         width: 200,
         height: 50,
         zIndex: 1,
-    };
+    }, [node.style]);
     // 选中的状态
     const isSelected = selectedId === node.id;
     // 当组件靠近画布顶部时，标签会被遮住，需要翻转到下方显示
     const isNearTop = style.top < 20;
+    const minWidth = style.minWidth ?? (node.type === "Text" ? 100 : undefined);
+    const minHeight = style.minHeight ?? (node.type === "Text" ? 50 : undefined);
 
     // raf 防抖，避免拖拽时频繁触发高亮 setState
     const highlightRaf = useRef<number>();
+    const hasActiveSnaps = useRef(false);
     useEffect(() => {
         return () => {
-            if (highlightRaf.current) {
+            if (highlightRaf.current !== undefined) {
                 cancelAnimationFrame(highlightRaf.current);
             }
+            if (hasActiveSnaps.current) setActiveSnaps([]);
         };
-    }, []);
+    }, [setActiveSnaps]);
     // 安全地更新吸附线位置 防抖思路
     const updateSnapsSafely = useCallback(
         (snaps: { orientation: "x" | "y"; value: number }[] = []) => {
-            if (highlightRaf.current) cancelAnimationFrame(highlightRaf.current);
+            if (highlightRaf.current !== undefined) cancelAnimationFrame(highlightRaf.current);
+            highlightRaf.current = undefined;
+            hasActiveSnaps.current = snaps.length > 0;
+            // 松手立即清空，并取消未执行的帧，避免参考线在拖拽结束后重新出现。
+            if (snaps.length === 0) {
+                setActiveSnaps([]);
+                return;
+            }
             highlightRaf.current = requestAnimationFrame(() => {
+                highlightRaf.current = undefined;
                 // 设置高亮线
                 setActiveSnaps(snaps);
             });
@@ -83,36 +100,52 @@ export default function RndItem({ node, children, scale = 1 }: RndItemProps) {
         [setActiveSnaps],
     );
 
+    useEffect(() => {
+        if (!isSelected && hasActiveSnaps.current) updateSnapsSafely([]);
+    }, [isSelected, updateSnapsSafely]);
+
     // ===== 回调函数：从 Rnd 属性中提取 =====
+
+    // 参考线与最终写入的坐标使用同一套吸附和边界规则。
+    const getSnappedPosition = useCallback((data: DraggableData) => {
+        const position = {
+            left: snapToGrid(data.x, resolvedGridSize).value,
+            top: snapToGrid(data.y, resolvedGridSize).value,
+        };
+        const parent = data.node.parentElement;
+        const bounds = containerBounds ?? (parent ? { width: parent.clientWidth, height: parent.clientHeight } : undefined);
+        if (!bounds) return position;
+        const constrained = clampStyleToBounds({ ...style, ...position }, bounds);
+        return { left: constrained.left, top: constrained.top };
+    }, [resolvedGridSize, containerBounds, style]);
 
     /** 拖拽过程中仅处理参考线高亮 */
     const handleDrag = useCallback(
         (_e: DraggableEvent, data: DraggableData) => {
-            // 拖拽过程中计算吸附后的坐标
-            const gridXValue = snapToGrid(data.x, resolvedGridSize).value;
-            const gridYValue = snapToGrid(data.y, resolvedGridSize).value;
+            const position = getSnappedPosition(data);
+            // data.x/y 相对于直接父容器，参考线需要相对于整张画布。
+            const canvasPosition = getCanvasGuidePosition(data.node, position, scale);
             // 高亮吸附线的位置
             updateSnapsSafely([
-                { orientation: "x", value: gridXValue },
-                { orientation: "y", value: gridYValue },
+                { orientation: "x", value: canvasPosition.left },
+                { orientation: "y", value: canvasPosition.top },
             ]);
         },
-        [resolvedGridSize, updateSnapsSafely],
+        [getSnappedPosition, scale, updateSnapsSafely],
     );
 
     /** 拖拽结束时同步最新坐标到 schema */
     const handleDragStop = useCallback(
         (_e: DraggableEvent, data: DraggableData) => {
             // 拖拽结束时，计算吸附后的坐标
-            const snappedLeft = snapToGrid(data.x, resolvedGridSize).value;
-            const snappedTop = snapToGrid(data.y, resolvedGridSize).value;
+            const position = getSnappedPosition(data);
             // 高亮线清空，避免残留
             updateSnapsSafely([]);
             updateItem(node.id, {
-                style: { ...style, left: snappedLeft, top: snappedTop },
+                style: { ...style, ...position },
             } as Partial<ComponentNode>);
         },
-        [resolvedGridSize, updateSnapsSafely, updateItem, node.id, style],
+        [getSnappedPosition, updateSnapsSafely, updateItem, node.id, style],
     );
 
     /** 缩放结束时同步最新尺寸与坐标到 schema */
@@ -136,8 +169,8 @@ export default function RndItem({ node, children, scale = 1 }: RndItemProps) {
             ).value;
             console.log("snappedWidth:", snappedWidth, "snappedHeight:", snappedHeight);
             // 计算坐标吸附后的坐标
-            const snappedLeft = snapToGrid(position.x, resolvedGridSize).value;
-            const snappedTop = snapToGrid(position.y, resolvedGridSize).value;
+            const snappedLeft = isFlex ? style.left : snapToGrid(position.x, resolvedGridSize).value;
+            const snappedTop = isFlex ? style.top : snapToGrid(position.y, resolvedGridSize).value;
             updateSnapsSafely([]);
             updateItem(node.id, {
                 style: {
@@ -149,7 +182,7 @@ export default function RndItem({ node, children, scale = 1 }: RndItemProps) {
                 },
             } as Partial<ComponentNode>);
         },
-        [resolvedGridSize, updateSnapsSafely, updateItem, node.id, style],
+        [resolvedGridSize, updateSnapsSafely, updateItem, node.id, style, isFlex],
     );
 
     /** 点击选中当前组件 */
@@ -186,20 +219,33 @@ export default function RndItem({ node, children, scale = 1 }: RndItemProps) {
         setSelectedId(null);
     }, [setSelectedId]);
 
-    return (
+    // 子组件的鼠标 / 触摸事件不能继续触发外层容器的拖动。
+    const stopNestedDrag = (event: React.MouseEvent | React.TouchEvent) => {
+        if (node.type !== "Container" || !(event.target instanceof Element)) return;
+        if (event.target.closest("[data-component-id]")?.getAttribute("data-component-id") !== node.id) {
+            event.stopPropagation();
+        }
+    };
+
+    const item = (
         <Rnd
+            data-component-id={node.id}
             //  size驱动组件的宽高
             size={{ width: style.width, height: style.height }}
             //  position驱动组件的坐标 因为里边的组件都是绝对定位
-            position={{ x: style.left, y: style.top }}
-            minWidth={style.minWidth ?? (node.type === "Text" ? 100 : undefined)}
-            minHeight={style.minHeight ?? (node.type === "Text" ? 50 : undefined)}
+            position={isFlex ? { x: 0, y: 0 } : { x: style.left, y: style.top }}
+            minWidth={containerBounds && minWidth != null ? Math.min(minWidth, containerBounds.width, style.width) : minWidth}
+            minHeight={containerBounds && minHeight != null ? Math.min(minHeight, containerBounds.height, style.height) : minHeight}
+            maxWidth={containerBounds?.width}
+            maxHeight={containerBounds?.height}
             // 边界为父容器，避免拖出画布
-            bounds="parent"
+            bounds={isFlex ? undefined : "parent"}
             scale={scale}
             // 选中的组件才允许拖拽和缩放，未选中的组件禁止拖拽和缩放
-            disableDragging={node.id !== selectedId}
-            enableResizing={node.id === selectedId}
+            disableDragging={isFlex || node.id !== selectedId}
+            enableResizing={node.id === selectedId && (isFlex
+                ? { right: true, bottom: true, bottomRight: true }
+                : true)}
             // 层级
             style={{ zIndex: style.zIndex }}
             // 在交互结束时回调最新的位置和尺寸
@@ -213,9 +259,11 @@ export default function RndItem({ node, children, scale = 1 }: RndItemProps) {
                     position: "relative",
                     width: "100%",
                     height: "100%",
-                    backgroundColor: style.backgroundColor,
+                    backgroundColor: node.type === "Container" ? undefined : style.backgroundColor,
                 }}
                 onClick={handleClick}
+                onMouseDown={stopNestedDrag}
+                onTouchStart={stopNestedDrag}
             >
                 {/* 选中时显示的覆盖层 */}
                 {isSelected && (
@@ -236,4 +284,11 @@ export default function RndItem({ node, children, scale = 1 }: RndItemProps) {
             </div>
         </Rnd>
     );
+
+    // 独立占位盒参与 flex 排列，Rnd 仍使用盒内坐标，避免其内部偏移修正抵消 flex 位置。
+    return isFlex ? (
+        <div data-flex-item={node.id} style={{ position: "relative", width: style.width, height: style.height, flexShrink: 0 }}>
+            {item}
+        </div>
+    ) : item;
 }

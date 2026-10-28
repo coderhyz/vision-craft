@@ -143,3 +143,8 @@ export const switchHints: FormHints = {
     size: { title: "尺寸", enum: ["default", "small"], widget: "radio" },
     disabled: { title: "禁用" },
 };
+
+export const containerHints: FormHints = {
+    layoutMode: { title: "布局方式", enum: ["absolute", "flex"], widget: "radio", description: "absolute：自由定位；flex：按顺序排列并自动换行" },
+    gap: { title: "组件间距", min: 0, description: "自动排列时生效，单位为像素" },
+};

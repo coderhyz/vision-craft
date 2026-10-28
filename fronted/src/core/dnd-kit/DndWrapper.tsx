@@ -1,7 +1,6 @@
 import {
     DndContext,
     DragOverlay,
-    pointerWithin,
     type DragStartEvent,
     type DragEndEvent,
 } from "@dnd-kit/core";
@@ -10,6 +9,7 @@ import { useSchemaStore } from "@/store/schema-store";
 import { componentDefaultConfigs, getNewComponentConfig } from "@/config";
 import { nanoid } from "nanoid";
 import { normalizeGridSize, snapToGrid } from "@/core/utils/grid";
+import { containerCollisionDetection, getContainerDropPosition } from "./container-drop";
 
 /**
  * 该组件是一个拖拽的上下文环境，统一封装各种事件处理逻辑 拖拽系统
@@ -74,8 +74,7 @@ export default function DndWrapper({
         // - over.rect：当前命中的可放置区域在视口中的位置
         // 通过两者相减，得到组件在父容器内部的相对 left / top
 
-        // 优先使用真实画布内容的矩形作为坐标原点。
-        // DOMRect 已经包含画布居中、缩放和滚动产生的视觉偏移，不能再额外累加 scroll。
+        // 根节点沿用真实画布原点；嵌套容器必须使用命中放置区自己的原点。
         const canvasRect = document
             .querySelector<HTMLElement>('[data-canvas-content="true"]')
             ?.getBoundingClientRect();
@@ -83,10 +82,13 @@ export default function DndWrapper({
         // 真实画布不存在时，回退到 dnd-kit 当前命中区域的矩形。
         const overData = event.over?.data?.current as {
             getBoundingClientRect?: () => DOMRect | undefined;
+            getScrollOffset?: () => { left: number; top: number };
         };
         // 如果连命中区域的矩形也不存在，说明拖拽结束时没有命中任何可放置区域，直接返回。
-        const overRect =
-            canvasRect ?? overData?.getBoundingClientRect?.() ?? event.over?.rect;
+        const isRootDrop = dropItemId === schemaStore.schema?.id;
+        const overRect = isRootDrop
+            ? canvasRect ?? overData?.getBoundingClientRect?.() ?? event.over?.rect
+            : overData?.getBoundingClientRect?.() ?? event.over?.rect;
 
         // 放置的目标元素相对于浏览器视口左上角的相对位置
         const activeRect = event.active.rect.current?.translated;
@@ -94,8 +96,10 @@ export default function DndWrapper({
             // 缩放后需要把落点还原为原始坐标系
             // 两个矩形都是浏览器视口坐标，相减后得到缩放状态下的画布内坐标，
             // 再除以缩放比例，还原成画布的逻辑坐标。
-            const offsetLeft = (activeRect.left - overRect.left) / zoom;
-            const offsetTop = (activeRect.top - overRect.top) / zoom;
+            const { left: offsetLeft, top: offsetTop } = getContainerDropPosition(
+                activeRect, overRect, zoom,
+                isRootDrop ? undefined : overData?.getScrollOffset?.(),
+            );
 
             // 使用页面配置的网格尺寸做吸附：取最近网格点
             const gridSize = normalizeGridSize(
@@ -130,7 +134,7 @@ export default function DndWrapper({
         <DndContext
             // 只有鼠标指针真正进入画布可放置区域才算命中，
             // 避免拖拽遮罩仅与画布边缘相交时就提前触发感应。
-            collisionDetection={pointerWithin}
+            collisionDetection={containerCollisionDetection}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onDragCancel={handleDragCancel}

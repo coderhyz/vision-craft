@@ -4,7 +4,7 @@ import type { ComponentHintsRegistry } from "./types";
 import {
     textHints, imageHints, buttonHints, clockHints, statisticCardHints,
     progressBarHints, countdownHints, dividerHints, badgeHints, tagHints,
-    avatarHints, rateHints, switchHints,
+    avatarHints, rateHints, switchHints, containerHints,
 } from "./basic";
 import {
     barChartHints, multiBarChartHints, lineChartHints, areaChartHints,
@@ -28,6 +28,7 @@ export const componentHintsRegistry: ComponentHintsRegistry = {
     Avatar: avatarHints,
     Rate: rateHints,
     Switch: switchHints,
+    Container: containerHints,
     // 图表组件
     BarChart: barChartHints,
     MultiBarChart: multiBarChartHints,

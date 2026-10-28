@@ -4,12 +4,15 @@ import type { ComponentNode } from "../schema/basic";
 import type { PageDSL } from "../schema/page";
 import RndItem from "@/core/rnd/RndItem"
 import { ERROR_COMPONENT_DEFAULT_SIZE } from "@/components/materials/basic/ErrorCallback";
+import { getContainerBounds } from "@/core/utils/container";
 
 interface RendererProps {
     // schema 可以是单个组件，也可以是组件数组，或者是整个页面schema
     schema: ComponentNode | ComponentNode[] | PageDSL;
     mode?: "edit" | "preview";
     scale?: number;
+    layout?: "absolute" | "flex";
+    containerBounds?: { width: number; height: number };
 }
 
 /**
@@ -21,6 +24,8 @@ export default function Renderer({
     schema,
     mode = "edit",
     scale = 1,
+    layout = "absolute",
+    containerBounds,
 }: RendererProps): React.ReactNode {
     // 如果 schema 为空，直接返回 null
     if (!schema) {
@@ -30,7 +35,7 @@ export default function Renderer({
     if (Array.isArray(schema)) {
         return schema.map((node) => (
             // 递归调用 Renderer 来渲染子节点
-            <Renderer key={node.id} schema={node} mode={mode} scale={scale} />
+            <Renderer key={node.id} schema={node} mode={mode} scale={scale} layout={layout} containerBounds={containerBounds} />
         ));
     }
 
@@ -44,7 +49,9 @@ export default function Renderer({
     // 这里的 renderChildren 是为了让容器组件能够回调引擎来渲染它的子节点
     // 实现了 "控制反转"，容器不需要知道子节点具体是什么类型
     const renderChildren = (children: ComponentNode[]) => (
-        <Renderer schema={children} mode={mode} scale={scale} />
+        <Renderer schema={children} mode={mode} scale={scale}
+            layout={schema.type === "Container" && schema.props?.layoutMode === "flex" ? "flex" : "absolute"}
+            containerBounds={schema.type === "Container" ? getContainerBounds(schema) : undefined} />
     );
 
     // 4. 非preview模式：根容器占满画布本身，不参与 Rnd 拖拽
@@ -67,7 +74,7 @@ export default function Renderer({
         height: isErrorFallback ? ERROR_COMPONENT_DEFAULT_SIZE.height : 50,
         zIndex: 1,
     };
-    const style = { ...defaultStyle, ...node.style };
+    const style: NonNullable<ComponentNode["style"]> = { ...defaultStyle, ...node.style };
     // 错误兜底也需要完整尺寸，确保 Rnd 选框与实际显示区域保持一致。
     const resolvedNode = isErrorFallback
         ? ({ ...node, style } as ComponentNode)
@@ -79,14 +86,20 @@ export default function Renderer({
     if (mode === "preview") {
         return (
             <div
+                data-component-id={node.id}
                 style={{
-                    position: "absolute",
-                    top,
-                    left,
+                    position: layout === "flex" ? "relative" : "absolute",
+                    ...(layout === "flex" ? { flexShrink: 0 } : { top, left }),
                     width,
                     height,
                     zIndex,
-                    ...restStyle,
+                    ...(node.type === "Container" ? {} : restStyle),
+                    ...(containerBounds ? {
+                        minWidth: style.minWidth != null ? Math.min(style.minWidth, width, containerBounds.width) : undefined,
+                        minHeight: style.minHeight != null ? Math.min(style.minHeight, height, containerBounds.height) : undefined,
+                        maxWidth: containerBounds.width,
+                        maxHeight: containerBounds.height,
+                    } : {}),
                 }}
             >
                 {renderComponent({
@@ -101,7 +114,7 @@ export default function Renderer({
     // 4. 非preview模式且非根容器：普通组件统一通过 RndItem 包裹，使其在画布内可拖拽 / 缩放
     return (
         // RndItem 组件内部会根据传入的 node.style 来设置 Rnd 的位置和大小
-        <RndItem node={resolvedNode} scale={scale}>
+        <RndItem node={resolvedNode} scale={scale} layout={layout} containerBounds={containerBounds}>
             {renderComponent({
                 node: resolvedNode,
                 renderChildren,
