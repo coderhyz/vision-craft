@@ -65,5 +65,7 @@ export const chartFieldSlots: Partial<Record<ComponentType, FieldSlot[]>> = {
         { key: "value", label: "数值", required: true },
     ],
     // RadarChart: 走 indicators 定义维度，不使用 fieldMapping
-    // GaugeChart: 直接传 value，不需要 fieldMapping
+    GaugeChart: [
+        { key: "value", label: "数值字段", required: true },
+    ],
 };

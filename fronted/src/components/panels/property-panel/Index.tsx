@@ -7,7 +7,8 @@ import { useShallow } from "zustand/shallow";
 import EmptyPanel from "./EmptyPanel";
 import AIChatPanel from "./AIChatPanel";
 import PropsFormRenderer from "./PropsFormRenderer";
-import DataSourceEditor, { isChartType } from "./DataSourceEditor";
+import DataSourceEditor from "./DataSourceEditor";
+import { isChartType } from "@/core/utils/chart-data-source";
 import PageFormRenderer, { pageHints, pageFieldGroups } from "./PageFormRenderer";
 import { useComponentEditStore } from "@/store/component-edit-store";
 import { Settings2, FileText, Sparkles } from "lucide-react";
@@ -169,7 +170,7 @@ export default function PropertyPanel() {
             // 组件类型
             const cType = node.type as ComponentType;
             //  判断是否需要显示数据源编辑器
-            const showDataSource = isChartType(cType) && "dataSource" in node;
+            const showDataSource = isChartType(cType);
             return (
                 <div className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden">
                     <PropsFormRenderer
@@ -184,9 +185,11 @@ export default function PropertyPanel() {
                     {showDataSource && (
                         <div className="border-t border-slate-200 p-3">
                             <DataSourceEditor
+                                key={node.id}
+                                componentId={node.id}
                                 // 组件类型
                                 componentType={cType}
-                                dataSource={(node as any).dataSource as ChartDataSource}
+                                dataSource={("dataSource" in node && node.dataSource) || { sourceType: "static" }}
                                 onChange={handleDataSourceChange}
                             />
                         </div>

@@ -9,7 +9,13 @@ import EChartsBase from "./EChartsBase";
  */
 export default function GaugeChart({ node }: RendererProps) {
     const chartNode = node as GaugeChartComponent;
-    const { props } = chartNode;
+    const { props, dataSource } = chartNode;
+    // 仪表盘只显示一个值，因此从数据源第一条记录读取映射的字段。
+    const firstRow = dataSource?.data?.[0];
+    const valueField = dataSource?.fieldMapping?.value ?? "value";
+    const dataValue = firstRow && typeof firstRow === "object" ? Number((firstRow as Record<string, unknown>)[valueField]) : NaN;
+    // 有有效数据就使用它；静态模式无数据时沿用属性值，API 无数据时不冒用旧属性值。
+    const value = Number.isFinite(dataValue) ? dataValue : dataSource?.sourceType === "api" ? 0 : props.value;
 
     const option = useMemo(() => {
         return {
@@ -49,11 +55,11 @@ export default function GaugeChart({ node }: RendererProps) {
                             : "{value}",
                         fontSize: 20,
                     },
-                    data: [{ value: props.value }],
+                    data: [{ value }],
                 },
             ],
         } as echarts.EChartsOption;
-    }, [props]);
+    }, [props, value]);
 
     return <EChartsBase option={option} />;
 }

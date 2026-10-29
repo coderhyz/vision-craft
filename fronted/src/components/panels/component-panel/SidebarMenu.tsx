@@ -61,19 +61,19 @@ export default function SidebarMenu({ className }: { className?: string }) {
         <div className={`flex min-h-0 min-w-0 overflow-hidden ${className}`}>
             {/* 菜单组件 */}
             <ConfigProvider theme={{ components: { Menu: { fontSize: 12, itemHeight: 36, iconMarginInlineEnd: 6 } } }}>
-            <Menu className="h-full shrink-0 overflow-y-auto"
-                style={{ width: 120 }}
-                mode="inline"
-                inlineIndent={8}
-                // 菜单项目
-                items={items}
-                // 选中的菜单项
-                selectedKeys={[selectedKey]}
-                // 默认展开的菜单项
-                defaultOpenKeys={["charts"]}
-                // 菜单项点击事件
-                onSelect={handleItemSelected}
-            />
+                <Menu className="h-full shrink-0 overflow-y-auto"
+                    style={{ width: 120 }}
+                    mode="inline"
+                    inlineIndent={8}
+                    // 菜单项目
+                    items={items}
+                    // 选中的菜单项
+                    selectedKeys={[selectedKey]}
+                    // 默认展开的菜单项
+                    defaultOpenKeys={["charts"]}
+                    // 菜单项点击事件
+                    onSelect={handleItemSelected}
+                />
             </ConfigProvider>
             {/* 组件面板 */}
             {selectedKey === "basic" && <BasicPanel />}

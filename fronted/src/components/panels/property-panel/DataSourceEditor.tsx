@@ -1,38 +1,22 @@
 import { useMemo, useCallback, useEffect, useState } from "react";
-import { Select, Input, InputNumber, Radio, Collapse, Typography } from "antd";
+import { Select, Input, InputNumber, Radio, Collapse, Typography, Button, Alert } from "antd";
 import type { ComponentType } from "@/core/schema/types";
 import type { ChartDataSource } from "@/core/schema/types";
 import { chartFieldSlots, type FieldSlot } from "@/config/chart-field-slots";
+import { useChartDataSource } from "@/hooks/useChartDataSource";
 
 const { TextArea } = Input;
 const { Text } = Typography;
 
 /** 数据源编辑器组件的属性。 */
 interface DataSourceEditorProps {
+    componentId: string;
     /** 当前正在编辑的组件类型，用于匹配图表所需的字段槽位。 */
     componentType: ComponentType;
     /** 当前图表的数据源配置。 */
     dataSource: ChartDataSource;
     /** 数据源配置发生变化时通知父组件。 */
     onChange: (ds: ChartDataSource) => void;
-}
-
-/** 支持数据源配置的图表组件类型集合。 */
-const CHART_TYPES = new Set<ComponentType>([
-    "BarChart", "MultiBarChart", "LineChart", "PieChart",
-    "ScatterChart", "BubbleChart", "AreaChart", "MultiLineChart",
-    "HorizontalBarChart", "RosePieChart", "RadarChart",
-    "FunnelChart", "GaugeChart", "TreemapChart",
-]);
-
-/**
- * 判断指定组件是否属于图表组件。
- *
- * @param type 待判断的组件类型。
- * @returns 属于图表组件时返回 true，否则返回 false。
- */
-export function isChartType(type: ComponentType): boolean {
-    return CHART_TYPES.has(type);
 }
 
 /**
@@ -47,27 +31,30 @@ export function isChartType(type: ComponentType): boolean {
  * @param onChange 数据源更新回调。
  * @returns 数据来源与字段映射编辑面板。
  */
-export default function DataSourceEditor({ componentType, dataSource, onChange }: DataSourceEditorProps) {
+export default function DataSourceEditor({ componentId, componentType, dataSource, onChange }: DataSourceEditorProps) {
+    // 和画布共用接口结果；这里只订阅同一资源，不会再独立发送第二次请求。
+    const { data: resolvedData, status, error, reload } = useChartDataSource(componentId, dataSource);
     /** 当前图表支持的字段槽位，例如分类字段、数值字段和系列字段。 */
     const slots: FieldSlot[] = chartFieldSlots[componentType] ?? [];
     /** 当前数据来源类型，未配置时默认使用静态数据。 */
     const sourceType = dataSource.sourceType ?? "static";
     /** 当前字段槽位与原始数据字段之间的映射关系。 */
-    const fieldMapping = dataSource.fieldMapping ?? {};
-    /** 静态 JSON 的输入草稿，允许用户暂时输入尚未完成的 JSON。 */
+    const fieldMapping = useMemo(() => dataSource.fieldMapping ?? {}, [dataSource.fieldMapping]);
+    /**
+     * 输入草稿只属于当前面板，用 useState 保存即可。
+     * 这与共享的接口结果不同：草稿不需要让图表等其他组件同时订阅。
+     */
     const [dataJsonDraft, setDataJsonDraft] = useState("[]");
 
     /**
-     * 从第一条静态数据中提取可用于字段映射的字段名。
-     * 数据为空或第一项不是普通对象时返回空数组。
+     * 从当前实际数据中提取字段，API 模式使用请求结果。
+     * 合并各条对象记录的字段，数据为空时返回空数组。
      */
     const availableFields = useMemo<string[]>(() => {
-        const data = dataSource.data;
+        const data = resolvedData;
         if (!Array.isArray(data) || data.length === 0) return [];
-        const first = data[0];
-        if (typeof first !== "object" || first === null) return [];
-        return Object.keys(first as Record<string, unknown>);
-    }, [dataSource.data]);
+        return [...new Set(data.flatMap((row) => row && typeof row === "object" && !Array.isArray(row) ? Object.keys(row) : []))];
+    }, [resolvedData]);
 
     /**
      * 合并局部数据源配置，并将完整配置通知父组件。
@@ -86,7 +73,7 @@ export default function DataSourceEditor({ componentType, dataSource, onChange }
      * 当 value 为空时删除该槽位的映射。
      *
      * @param key 图表字段槽位标识。
-     * @param value 静态数据中的目标字段名。
+     * @param value 当前数据中的目标字段名。
      */
     const updateMapping = useCallback(
         (key: string, value?: string) => {
@@ -112,6 +99,7 @@ export default function DataSourceEditor({ componentType, dataSource, onChange }
 
     /** 外部静态数据发生变化时，同步更新输入框草稿。 */
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- 外部静态数据同步到允许无效 JSON 的输入草稿。
         setDataJsonDraft(dataJson);
     }, [dataJson]);
 
@@ -171,6 +159,7 @@ export default function DataSourceEditor({ componentType, dataSource, onChange }
                                 size="small"
                                 placeholder="API 地址"
                                 value={dataSource.apiUrl ?? ""}
+                                aria-label="API 地址"
                                 onChange={(e) => update({ apiUrl: e.target.value })}
                             />
                             <div className="flex items-center gap-2">
@@ -179,9 +168,22 @@ export default function DataSourceEditor({ componentType, dataSource, onChange }
                                     size="small"
                                     min={0}
                                     value={dataSource.refreshInterval}
+                                    aria-label="刷新间隔（秒）"
                                     onChange={(v) => update({ refreshInterval: v ?? undefined })}
                                 />
                             </div>
+                            <Button size="small" onClick={reload} disabled={!dataSource.apiUrl?.trim() || status === "loading"}>
+                                立即刷新
+                            </Button>
+                            {error ? <Alert type="error" title={error} showIcon /> : status !== "loading" && (
+                                <Text className="text-xs text-slate-500" aria-live="polite">
+                                    {status === "success" ? `已获取 ${resolvedData.length} 条数据，请确认下方字段映射。`
+                                            : "输入接口地址后自动请求；刷新间隔为 0 时不定时刷新。"}
+                                </Text>
+                            )}
+                            <Text className="text-xs text-slate-400">
+                                支持对象数组，以及 data、list、rows、items 包装；跨域接口需允许浏览器访问。
+                            </Text>
                         </div>
                     )}
                 </div>

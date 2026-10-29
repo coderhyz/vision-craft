@@ -27,6 +27,7 @@ type TrendCN = "上升" | "下降" | "持平";
 // 先从一个text组件开始，后续再扩展其他组件
 export interface TextComponent extends BaseComponentNode {
     type: "Text"; //组件类型收窄
+    // 内容属性，描述用户能看到的东西
     props: {
         content: string; // 内容
         fontSize: number; // 字体大小

@@ -5,6 +5,8 @@ import type { PageDSL } from "../schema/page";
 import RndItem from "@/core/rnd/RndItem"
 import { ERROR_COMPONENT_DEFAULT_SIZE } from "@/components/materials/basic/ErrorCallback";
 import { getContainerBounds } from "@/core/utils/container";
+import { isChartType } from "@/core/utils/chart-data-source";
+import ChartDataRenderer from "@/components/materials/chart/ChartDataRenderer";
 
 interface RendererProps {
     // schema 可以是单个组件，也可以是组件数组，或者是整个页面schema
@@ -81,6 +83,10 @@ export default function Renderer({
         : node;
     // 传入的style
     const { top, left, width, height, zIndex, ...restStyle } = style;
+    // 图表统一经过请求适配层，编辑和预览共用同一套数据源规则。
+    const content = isChartType(node.type) ? (
+        <ChartDataRenderer node={resolvedNode} component={renderComponent} mode={mode} />
+    ) : renderComponent({ node: resolvedNode, renderChildren, mode });
 
     // 3. preview模式：所有组件以绝对定位方式渲染，不参与 Rnd 拖拽
     if (mode === "preview") {
@@ -102,11 +108,7 @@ export default function Renderer({
                     } : {}),
                 }}
             >
-                {renderComponent({
-                    node: resolvedNode,
-                    renderChildren,
-                    mode,
-                })}
+                {content}
             </div>
         );
     }
@@ -115,11 +117,7 @@ export default function Renderer({
     return (
         // RndItem 组件内部会根据传入的 node.style 来设置 Rnd 的位置和大小
         <RndItem node={resolvedNode} scale={scale} layout={layout} containerBounds={containerBounds}>
-            {renderComponent({
-                node: resolvedNode,
-                renderChildren,
-                mode,
-            })}
+            {content}
         </RndItem>
     );
 }
