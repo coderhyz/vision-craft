@@ -31,7 +31,12 @@ interface RndItemProps {
  * - 在拖拽 / 缩放结束时把最新的位置和尺寸回写到 schema-store
  * - 同时承载「选中态」的点击事件，选中态 UI 委托给 SelectionOverlay 和 AiEditInput
  */
-export default function RndItem({ node, children, scale = 1, layout = "absolute", containerBounds }: RndItemProps) {
+export default function RndItem({
+    node,
+    children,
+    scale = 1,
+    layout = "absolute",
+    containerBounds }: RndItemProps) {
     const isFlex = layout === "flex";
     // 从 schema-store 中获取更新节点、删除节点、选中态等方法
     const { updateItem, removeItem, selectedId, setSelectedId, gridSize } =
@@ -83,6 +88,7 @@ export default function RndItem({ node, children, scale = 1, layout = "absolute"
     // 安全地更新吸附线位置 防抖思路
     const updateSnapsSafely = useCallback(
         (snaps: { orientation: "x" | "y"; value: number }[] = []) => {
+            // 先清除一下这个帧，避免拖拽结束后残留的参考线重新出现
             if (highlightRaf.current !== undefined) cancelAnimationFrame(highlightRaf.current);
             highlightRaf.current = undefined;
             hasActiveSnaps.current = snaps.length > 0;
@@ -92,16 +98,19 @@ export default function RndItem({ node, children, scale = 1, layout = "absolute"
                 return;
             }
             highlightRaf.current = requestAnimationFrame(() => {
-                highlightRaf.current = undefined;
                 // 设置高亮线
                 setActiveSnaps(snaps);
+                highlightRaf.current = undefined;
             });
         },
         [setActiveSnaps],
     );
 
     useEffect(() => {
-        if (!isSelected && hasActiveSnaps.current) updateSnapsSafely([]);
+        // 组件取消选中时，如果它还有参考线，就把参考线清掉。
+        if (!isSelected && hasActiveSnaps.current) {
+            updateSnapsSafely([]);
+        }
     }, [isSelected, updateSnapsSafely]);
 
     // ===== 回调函数：从 Rnd 属性中提取 =====
@@ -116,7 +125,10 @@ export default function RndItem({ node, children, scale = 1, layout = "absolute"
         const bounds = containerBounds ?? (parent ? { width: parent.clientWidth, height: parent.clientHeight } : undefined);
         if (!bounds) return position;
         const constrained = clampStyleToBounds({ ...style, ...position }, bounds);
-        return { left: constrained.left, top: constrained.top };
+        return {
+            left: constrained.left,
+            top: constrained.top
+        };
     }, [resolvedGridSize, containerBounds, style]);
 
     /** 拖拽过程中仅处理参考线高亮 */
@@ -141,6 +153,7 @@ export default function RndItem({ node, children, scale = 1, layout = "absolute"
             const position = getSnappedPosition(data);
             // 高亮线清空，避免残留
             updateSnapsSafely([]);
+            // 更新 schema-store 中的节点坐标
             updateItem(node.id, {
                 style: { ...style, ...position },
             } as Partial<ComponentNode>);
@@ -171,6 +184,7 @@ export default function RndItem({ node, children, scale = 1, layout = "absolute"
             // 计算坐标吸附后的坐标
             const snappedLeft = isFlex ? style.left : snapToGrid(position.x, resolvedGridSize).value;
             const snappedTop = isFlex ? style.top : snapToGrid(position.y, resolvedGridSize).value;
+            // 清除参考线
             updateSnapsSafely([]);
             updateItem(node.id, {
                 style: {
@@ -196,6 +210,7 @@ export default function RndItem({ node, children, scale = 1, layout = "absolute"
 
     /** 删除当前组件 */
     const handleDelete = useCallback(() => {
+        // 弹窗确认删除，避免误操作
         Modal.confirm({
             title: "确认删除组件？",
             content: `确定要删除「${node.name || node.type}」组件吗？删除后无法恢复。`,

@@ -116,7 +116,12 @@ export default function Renderer({
     // 4. 非preview模式且非根容器：普通组件统一通过 RndItem 包裹，使其在画布内可拖拽 / 缩放
     return (
         // RndItem 组件内部会根据传入的 node.style 来设置 Rnd 的位置和大小
-        <RndItem node={resolvedNode} scale={scale} layout={layout} containerBounds={containerBounds}>
+        <RndItem
+            node={resolvedNode}
+            scale={scale}
+            // 布局
+            layout={layout}
+            containerBounds={containerBounds}>
             {content}
         </RndItem>
     );

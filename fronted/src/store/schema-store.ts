@@ -66,7 +66,7 @@ const createDefaultSchema = (): PageDSL => ({
  */
 export const useSchemaStore = create<SchemaState>()(
     immer((set, get) => ({
-        // 页面组件树
+        // 页面组件树 核心
         schema: null,
         // 当前选中的组件 id，初始为空
         selectedId: null,

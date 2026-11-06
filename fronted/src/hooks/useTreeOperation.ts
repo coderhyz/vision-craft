@@ -2,7 +2,7 @@ import type { PageDSL } from "@/core/schema/page";
 import type { ComponentNode } from "@/core/schema/basic";
 // 定义树节点类型，包含组件节点和页面根节点
 type TreeNode = ComponentNode | PageDSL;
-// 定义具有子节点的树节点类型
+// 定义具有子节点的树节点类型 交叉类型
 type TreeNodeWithChildren = TreeNode & { children: ComponentNode[] };
 // 定义可变的树节点类型，用于支持修改操作
 type MutableTreeNode = TreeNode & { children?: ComponentNode[] };
@@ -12,7 +12,7 @@ type MutableTreeNode = TreeNode & { children?: ComponentNode[] };
  * @description 组件树结构增删改查操作
  * @returns
  */
-export const createTreeOperations = () => {
+export function createTreeOperations() {
   /**
    * 判断节点是否具备 children 属性的类型守卫
    * 使用类型守卫可以让 TS 正确收窄类型，在后续逻辑中安全访问 children
@@ -37,6 +37,7 @@ export const createTreeOperations = () => {
     node: ComponentNode | PageDSL | null,
   ): ComponentNode | PageDSL | null => {
     if (!node) return null;
+    // 一般就是传递的父节点
     if (node.id === id) return node;
 
     // 只要节点存在 children 就继续向下查找，不再依赖 type 字段

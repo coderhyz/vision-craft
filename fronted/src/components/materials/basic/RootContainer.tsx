@@ -61,7 +61,7 @@ export default function RootContainer({
     if (mode === "preview") {
         return content;
     }
-    // 渲染态包裹DroppableItem，可拖拽组件
+    // 渲染态包裹DroppableItem，可放置组件
     return (
         <DroppableItem id={node.id}>
             {content}
