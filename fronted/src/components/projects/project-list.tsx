@@ -56,7 +56,7 @@ export default function ProjectList() {
                 }
                 // 请求当前用户所有的项目列表
                 const resp = await listPages(userId);
-                console.log("项目列表接口响应：", resp);
+                // console.log("项目列表接口响应：", resp);
                 if (resp.code !== 0) {
                     throw new Error(resp.message || "获取项目失败");
                 }

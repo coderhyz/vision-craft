@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import * as echarts from "echarts";
+import type * as echarts from "echarts";
 import type { RendererProps } from "@/core/schema/types";
 import type { TreemapChartComponent } from "@/core/schema/chart";
 import EChartsBase from "./EChartsBase";

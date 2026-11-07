@@ -1,10 +1,48 @@
 import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
-import * as echarts from "echarts";
+import type { EChartsOption } from "echarts";
+import { init, use as registerCharts, type ECharts } from "echarts/core";
+import {
+    BarChart,
+    LineChart,
+    PieChart,
+    ScatterChart,
+    RadarChart,
+    GaugeChart,
+    FunnelChart,
+    TreemapChart,
+} from "echarts/charts";
+import {
+    TitleComponent,
+    TooltipComponent,
+    LegendComponent,
+    GridComponent,
+    RadarComponent,
+} from "echarts/components";
+import { LabelLayout } from "echarts/features";
+import { CanvasRenderer } from "echarts/renderers";
+
+registerCharts([
+    BarChart,
+    LineChart,
+    PieChart,
+    ScatterChart,
+    RadarChart,
+    GaugeChart,
+    FunnelChart,
+    TreemapChart,
+    TitleComponent,
+    TooltipComponent,
+    LegendComponent,
+    GridComponent,
+    RadarComponent,
+    LabelLayout,
+    CanvasRenderer,
+]);
 
 interface EChartsBaseProps {
     // 完整的 ECharts 配置项（如坐标轴、图例、系列数据），由上层组件负责生成
-    option: echarts.EChartsOption;
+    option: EChartsOption;
     // 允许外部自定义容器样式，默认占满父容器
     style?: CSSProperties;
 }
@@ -19,7 +57,7 @@ export default function EChartsBase({ option, style }: EChartsBaseProps) {
     const domRef = useRef<HTMLDivElement | null>(null);
     // 保存图表实例，供设置配置、调整尺寸和销毁时使用。
     // ref 可以跨渲染保存对象，修改 current 不会触发 React 重新渲染。
-    const chartRef = useRef<echarts.ECharts | null>(null);
+    const chartRef = useRef<ECharts | null>(null);
     // 保存尺寸观察器，方便在组件卸载时统一释放。
     const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
@@ -29,7 +67,7 @@ export default function EChartsBase({ option, style }: EChartsBaseProps) {
         if (!domRef.current) return;
 
         // 将 ECharts 绑定到容器 DOM，并保存实例供其他 effect 使用。
-        const chart = echarts.init(domRef.current);
+        const chart = init(domRef.current);
         chartRef.current = chart;
 
         return () => {
