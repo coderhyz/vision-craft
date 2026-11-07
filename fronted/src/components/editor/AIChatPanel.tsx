@@ -20,7 +20,7 @@ interface AIChatPanelProps {
 const PROMPT_EXAMPLES = [
     "智慧园区运营大屏，显示园区概览、能耗、客流、工单",
     "电商实时数据大屏，包含 GMV、转化、订单分布、品类占比",
-    "生产制造监控，展示产线 OEE、停线告警、设备状态、良率趋势",
+    "词云数据大屏，展示热门关键词词云、词频排行、话题热度、情感分布"
 ];
 
 export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {

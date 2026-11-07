@@ -68,7 +68,11 @@ export const getPageById = (id: string): Promise<SavePageResponse> => {
 
 // 获取当前用户的全部页面列表
 export const listPages = (userId: string): Promise<ListPagesResponse> => {
-  return http.get("/pages", { params: { userId } });
+  return http.get("/pages",
+    {
+      // 这是查询参数，后端会根据 userId 返回该用户的所有页面列表
+      params: { userId }
+    });
 };
 
 // 删除指定页面
