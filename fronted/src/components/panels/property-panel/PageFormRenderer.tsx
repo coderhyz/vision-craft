@@ -6,7 +6,7 @@ import type { FormHints, FormHint } from "@/config/hints";
  * 页面配置表单字段分组
  */
 interface PageFieldGroup {
-    key: string;
+    key: string; //键值对
     title: string;
     fields: string[];
 }
@@ -47,6 +47,7 @@ export default function PageFormRenderer({ values, hints, groups, onChange }: Pa
     return (
         <Collapse
             size="small"
+            // 默认展开所有分组
             defaultActiveKey={groups.map((g) => g.key)}
             items={collapseItems}
             className="bg-white"
@@ -69,7 +70,7 @@ function PageFieldRow({ fieldKey, value, hint, onChange }: PageFieldRowProps) {
         (val: any) => onChange(fieldKey, val),
         [fieldKey, onChange],
     );
-
+    // 字段值的类型
     const type = typeof value;
 
     // color → ColorPicker（同时保留文字输入）
@@ -98,7 +99,7 @@ function PageFieldRow({ fieldKey, value, hint, onChange }: PageFieldRowProps) {
                 value={value}
                 min={hint?.min}
                 max={hint?.max}
-                onChange={(v) => handleChange(v ?? 0)}
+                onChange={(val) => handleChange(val ?? 0)}
             />
         );
     } else if (hint?.widget === "textarea") {

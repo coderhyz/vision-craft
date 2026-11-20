@@ -21,7 +21,7 @@ export default function PropsFormRenderer({ componentType, values, onChange }: P
     // 例如 Text 组件的 hints
     const hints: FormHints = componentHintsRegistry[componentType] ?? {};
     useEffect(() => {
-        console.log("values", values);
+        // console.log("values", values);
     }, [values]);
     // 处理字段值改变的回调函数
     const handleChange = useCallback(
@@ -119,7 +119,7 @@ function FieldControl({ fieldKey, value, hint, onChange }: FieldRowProps) {
                 size="small"
                 className="w-full"
                 value={value}
-                onChange={(v) => onChange(fieldKey, v)}
+                onChange={(val) => onChange(fieldKey, val)}
                 options={hint.enum.map((e) => ({ label: String(e), value: e }))}
             />
         );
@@ -134,7 +134,7 @@ function FieldControl({ fieldKey, value, hint, onChange }: FieldRowProps) {
                 value={value}
                 min={hint?.min}
                 max={hint?.max}
-                onChange={(v) => onChange(fieldKey, v ?? 0)}
+                onChange={(val) => onChange(fieldKey, val ?? 0)}
             />
         );
     }
@@ -147,7 +147,7 @@ function FieldControl({ fieldKey, value, hint, onChange }: FieldRowProps) {
                     size="small"
                     className="w-full"
                     value={value}
-                    onChange={(v) => onChange(fieldKey, v)}
+                    onChange={(val) => onChange(fieldKey, val)}
                     // 选择器的配置项
                     options={hint.enum.map((e) => (
                         {

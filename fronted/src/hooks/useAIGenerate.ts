@@ -5,6 +5,7 @@ import { useShallow } from "zustand/shallow";
 import type { ComponentNode } from "@/core/schema/basic";
 import type { AgentStep, ChatMessage } from "@/types/chat";
 import { API_BASE_URL } from "@/api/config";
+import { postSSE } from "@/utils/readSSE";
 export type { ChatMessage };
 
 export interface SubmitOptions {
@@ -30,15 +31,21 @@ export function useAIGenerate() {
     // 会话 ID
     const sessionIdRef = useRef<string | null>(null);
     // SSE 连接引用
-    const sseRef = useRef<EventSource | null>(null);
-
+    // const sseRef = useRef<EventSource | null>(null);
+    const abortRef = useRef<AbortController | null>(null);
+    // const closeSSE = () => {
+    // 关闭 SSE 连接
+    //     sseRef.current?.close();
+    // 重置 SSE 引用，避免重复关闭
+    //     sseRef.current = null;
+    // };
+    // 
     const closeSSE = () => {
         // 关闭 SSE 连接
-        sseRef.current?.close();
+        abortRef.current?.abort();
         // 重置 SSE 引用，避免重复关闭
-        sseRef.current = null;
+        abortRef.current = null;
     };
-
     const updateLastAiMessage = (updater: (msg: ChatMessage) => Partial<ChatMessage>) => {
         setMessages((prev) => {
             const idx = [...prev].reverse().findIndex((m) => m.role === "ai");
@@ -178,175 +185,291 @@ export function useAIGenerate() {
         sessionIdRef.current = null;
     };
     // 提交的请求
+
     const submit = (userPrompt: string, options?: SubmitOptions) => {
         if (loading || !userPrompt.trim()) return;
-        // 这个是要精准修改的目标组件，携带完整配置注入 prompt 上下文
+
         const targetComponent = options?.targetComponent;
 
-        // 对话列表中显示的用户消息（带组件标记更直观）
+        // 1. 添加用户消息
         const displayContent = targetComponent
             ? `[修改 ${targetComponent.name || targetComponent.type}] ${userPrompt}`
             : userPrompt;
-        // 显示用户输入的内容
-        appendMessage({ role: "user", content: displayContent });
-        // 显示 AI 正在生成的提示
-        appendMessage({ role: "ai", content: "正在生成...", componentCount: 0, loading: true });
+
+        appendMessage({
+            role: "user",
+            content: displayContent,
+        });
+
+        appendMessage({
+            role: "ai",
+            content: "正在生成...",
+            componentCount: 0,
+            loading: true,
+        });
+
         setLoading(true);
-        // 关闭之前的 SSE 连接
+
+        // 2. 创建本次请求专属的 AbortController
         closeSSE();
+        const controller = new AbortController();
+        abortRef.current = controller;
 
-        const token = localStorage.getItem("token");
+        // 3. 读取登录 JWT
+        const token = localStorage.getItem("token") || "";
 
-        // 序列化当前画布组件清单，让后端注入到 AI 上下文中，防止编造 id
-        const existingComponents = (schema?.children || []).map((c) => ({
-            id: c.id,
-            type: c.type,
-            name: (c as unknown as Record<string, unknown>).name || "",
-        }));
+        // 4. 构建当前画布组件清单
+        const existingComponents = (schema?.children || []).map(
+            (component) => ({
+                id: component.id,
+                type: component.type,
+                name: component.name || "",
+            })
+        );
 
-        // 当指定了目标组件时，构建增强 prompt，将组件完整配置注入上下文
-        // 注意：组件 JSON 使用紧凑格式（无缩进），因为 EventSource 通过 GET 传参，URL 长度有限
+        // 5. 保留原来精准修改组件的 Prompt 逻辑
         const finalPrompt = targetComponent
             ? [
                 `请精准修改以下组件（id: "${targetComponent.id}", type: "${targetComponent.type}"），只修改用户要求变动的字段，其他保持不变。`,
                 `修改指令：${userPrompt}`,
-                `当前组件完整配置：`,
+                "当前组件完整配置：",
                 JSON.stringify(targetComponent),
             ].join("\n")
             : userPrompt;
-        // 最终传递的参数
-        const params = new URLSearchParams({
-            prompt: finalPrompt,
-            mode: "step",
-            token: token || "",
-            pageId: schema?.id || "",
-            existingComponents: JSON.stringify(existingComponents),
-        });
-        if (sessionIdRef.current) {
-            params.set("sessionId", sessionIdRef.current);
-        }
-        const sse = new EventSource(
-            `${API_BASE_URL}/ai/schema/generate?${params.toString()}`
-        );
-        sseRef.current = sse;
 
         let generatedCount = 0;
+        let receivedEnd = false;
 
-        sse.addEventListener("start", (evt) => {
+        // submit 仍保持同步调用方式，兼容现有 UI
+        void (async () => {
             try {
-                const data = JSON.parse((evt as MessageEvent).data);
-                if (data?.sessionId) sessionIdRef.current = data.sessionId;
-                // 更新最后一条 AI 消息
-                updateLastAiMessage(() => ({ content: "正在思考并生成中..." }));
-            } catch (error) {
-                console.error("[useAIGenerate][start][parse_error]", error);
-            }
-        });
+                if (!token) {
+                    throw new Error("请先登录后再生成");
+                }
 
-        sse.addEventListener("progress", (evt) => {
-            try {
-                appendProgressStep(JSON.parse((evt as MessageEvent).data));
-            } catch (e) {
-                console.error("[useAIGenerate][progress][parse_error]", e);
-            }
-        });
+                // 6. 发起 POST SSE 请求
+                await postSSE({
+                    url: `${API_BASE_URL}/ai/schema/generate`,
+                    token,
+                    signal: controller.signal,
 
-        sse.addEventListener("tool_call", (evt) => {
-            try {
-                appendToolCall(JSON.parse((evt as MessageEvent).data));
-            } catch (e) {
-                console.error("[useAIGenerate][tool_call][parse_error]", e);
-            }
-        });
+                    body: {
+                        prompt: finalPrompt,
+                        mode: "step",
+                        pageId: schema?.id || "",
+                        sessionId: sessionIdRef.current || undefined,
+                        existingComponents,
+                    },
 
-        sse.addEventListener("thinking", (evt) => {
-            try {
-                appendReasoning(JSON.parse((evt as MessageEvent).data));
-            } catch (e) {
-                console.error("[useAIGenerate][thinking][parse_error]", e);
-            }
-        });
+                    // 7. 按事件类型处理业务
+                    // 自己解析的 ReadableStream
+                    onEvent(event, data) {
+                        // 忽略已经取消或被替换的请求
+                        if (
+                            controller.signal.aborted ||
+                            abortRef.current !== controller
+                        ) {
+                            return;
+                        }
 
-        sse.addEventListener("tool_result", (evt) => {
-            try {
-                completeToolCall(JSON.parse((evt as MessageEvent).data));
-            } catch (e) {
-                console.error("[useAIGenerate][tool_result][parse_error]", e);
-            }
-        });
+                        switch (event) {
+                            case "start": {
+                                if (data?.sessionId) {
+                                    sessionIdRef.current = data.sessionId;
+                                }
 
-        sse.addEventListener("cached", () => {
-            appendProgressStep({
-                stage: "cached",
-                title: "复用缓存结果",
-                detail: "检测到相同请求，已跳过重复的模型调用。",
-            });
-        });
-        // 监听到后端返回的组件节点数据，进行 upsert（更新或新增）操作
-        sse.addEventListener("ai_chunk", (evt) => {
-            try {
-                // 监听到后端返回的组件节点数据，进行 upsert（更新或新增）操作
-                const payload = JSON.parse((evt as MessageEvent).data);
-                const node =
-                    typeof payload?.chunk === "string" ? JSON.parse(payload.chunk) : payload?.chunk;
+                                updateLastAiMessage(() => ({
+                                    content: "正在思考并生成中...",
+                                }));
+                                break;
+                            }
 
-                // update_page_config 输出：含 props/settings，无 type 字段
-                if (!node?.type && (node?.props || node?.settings)) {
-                    // 更新整个页面配置（props/settings），不涉及新增组件
-                    updatePage(node);
-                    // 更新最后一条 AI 消息
-                    updateLastAiMessage(() => ({ content: "页面配置已更新，继续生成中..." }));
+                            case "progress": {
+                                appendProgressStep(data);
+                                break;
+                            }
+
+                            case "thinking": {
+                                appendReasoning(data);
+                                break;
+                            }
+
+                            case "tool_call": {
+                                appendToolCall(data);
+                                break;
+                            }
+
+                            case "tool_result": {
+                                completeToolCall(data);
+                                break;
+                            }
+
+                            case "cached": {
+                                appendProgressStep({
+                                    stage: "cached",
+                                    title: "复用缓存结果",
+                                    detail: "命中了相同请求的缓存。",
+                                });
+                                break;
+                            }
+
+                            case "ai_chunk": {
+                                // 后端 data.chunk 是 JSON 字符串
+                                const node =
+                                    typeof data?.chunk === "string"
+                                        ? JSON.parse(data.chunk)
+                                        : data?.chunk;
+
+                                if (
+                                    !node ||
+                                    typeof node !== "object" ||
+                                    Array.isArray(node)
+                                ) {
+                                    throw new Error("AI 返回了无效组件数据");
+                                }
+
+                                // A. 更新页面级 props/settings
+                                if (
+                                    !node.type &&
+                                    (node.props || node.settings)
+                                ) {
+                                    updatePage(node);
+
+                                    updateLastAiMessage(() => ({
+                                        content: "页面配置已更新，继续生成中...",
+                                    }));
+                                    break;
+                                }
+
+                                if (!node.type) {
+                                    throw new Error("组件缺少 type 字段");
+                                }
+
+                                // B. 从 Store 读取最新 Schema，
+                                // 避免使用请求开始时的旧 Schema。
+                                const latestSchema = useSchemaStore.getState().schema;
+
+                                if (!latestSchema) {
+                                    throw new Error("当前画布不存在");
+                                }
+
+                                if (
+                                    node.id &&
+                                    findItem(node.id, latestSchema)
+                                ) {
+                                    // C. 更新已有组件
+                                    const updated = updateItem(node.id, node);
+
+                                    if (!updated) {
+                                        throw new Error(`组件 ${node.id} 更新失败`);
+                                    }
+
+                                    updateLastAiMessage(() => ({
+                                        content: `已更新组件 ${node.name || node.id}，继续生成中...`,
+                                        componentCount: generatedCount,
+                                    }));
+                                } else {
+                                    // D. 新增组件
+                                    const component = node.id
+                                        ? node
+                                        : { ...node, id: nanoid() };
+
+                                    const added = addItem(
+                                        latestSchema.id,
+                                        component
+                                    );
+
+                                    if (!added) {
+                                        throw new Error("组件添加到画布失败");
+                                    }
+
+                                    generatedCount++;
+
+                                    updateLastAiMessage(() => ({
+                                        content: `已生成 ${generatedCount} 个组件，继续生成中...`,
+                                        componentCount: generatedCount,
+                                    }));
+                                }
+                                break;
+                            }
+
+                            case "stream_error":
+                            case "error": {
+                                throw new Error(
+                                    data?.message || "AI 生成失败"
+                                );
+                            }
+
+                            case "end": {
+                                receivedEnd = true;
+
+                                if (data?.ok !== true) {
+                                    throw new Error(
+                                        data?.cancelled
+                                            ? "服务端取消了生成"
+                                            : "生成未成功完成"
+                                    );
+                                }
+                                break;
+                            }
+                        }
+                    },
+                });
+
+                // 8. 必须收到 end，不能只看 HTTP 正常结束
+                if (!receivedEnd) {
+                    throw new Error("SSE 提前断开，未收到 end 事件");
+                }
+
+                if (
+                    controller.signal.aborted ||
+                    abortRef.current !== controller
+                ) {
                     return;
                 }
 
-                // 普通组件节点：upsert 逻辑（ID 已存在则更新，否则新增）
-                if (node?.id && schema && findItem(node.id, schema)) {
-                    // 已有组件：原地更新完整配置
-                    updateItem(node.id, node);
-                    // 更新最后一条 AI 消息
-                    updateLastAiMessage(() => ({
-                        content: `已更新组件 ${node.name || node.id}，继续生成中...`,
-                        componentCount: generatedCount,
-                    }));
-                } else {
-                    // 新组件：确保有 id 后追加
-                    const component = node?.id ? node : { ...node, id: nanoid() };
-                    addItem(schema?.id || "", component);
-                    generatedCount++;
-                    updateLastAiMessage(() => ({
-                        content: `已生成 ${generatedCount} 个组件，继续生成中...`,
-                        componentCount: generatedCount,
-                    }));
+                // 9. 完成生成
+                finishRunningSteps();
+
+                updateLastAiMessage((msg) => ({
+                    content:
+                        (msg.componentCount ?? 0) > 0
+                            ? `生成完成，共 ${msg.componentCount} 个组件，记得保存 ✓`
+                            : "操作完成，记得保存 ✓",
+                    loading: false,
+                }));
+            } catch (error) {
+                // 用户主动停止时，cancel 已经处理了 UI
+                if (
+                    controller.signal.aborted ||
+                    abortRef.current !== controller
+                ) {
+                    return;
                 }
-            } catch (e) {
-                console.error("[useAIGenerate][ai_chunk][parse_error]", e);
+
+                finishRunningSteps("error");
+
+                const errorMessage =
+                    error instanceof Error
+                        ? error.message
+                        : "未知错误";
+
+                updateLastAiMessage(() => ({
+                    content: `生成失败：${errorMessage}`,
+                    loading: false,
+                }));
+
+                console.error("[useAIGenerate]", error);
+            } finally {
+                // 只允许本次请求清理自身的状态
+                if (abortRef.current === controller) {
+                    abortRef.current = null;
+                    setLoading(false);
+                }
             }
-        });
-
-        sse.addEventListener("end", () => {
-            finishRunningSteps();
-            updateLastAiMessage((msg) => ({
-                content:
-                    (msg.componentCount ?? 0) > 0
-                        ? `生成完成，共 ${msg.componentCount} 个组件，记得保存 ✓`
-                        : "操作完成，记得保存 ✓",
-                loading: false,
-            }));
-            setLoading(false);
-            closeSSE();
-        });
-
-        sse.addEventListener("stream_error", (evt) => {
-            console.error("[useAIGenerate][stream_error]", (evt as MessageEvent).data);
-        });
-
-        sse.addEventListener("error", () => {
-            finishRunningSteps("error");
-            updateLastAiMessage(() => ({ content: "生成失败，请重试", loading: false }));
-            setLoading(false);
-            closeSSE();
-        });
+        })();
     };
+
 
     return {
         messages,

@@ -41,17 +41,4 @@ export type GenerateSchemaStreamHandlers = {
     onDone?: () => void;
 };
 
-// ===================== RAG 问答相关类型 =====================
-
-export interface AskPayload {
-    question: string;
-    sessionId?: string;
-}
-
-export interface AskStreamHandlers {
-    onTextChunk?: (text: string) => void;
-    onSources?: (sources: { title: string; snippet?: string }[]) => void;
-    onError?: (message: string) => void;
-    onDone?: () => void;
-}
 
